@@ -12,7 +12,7 @@ const PROTECTED = [
   { prefix: '/cliente', roles: ['cliente', 'vendedor', 'secretaria', 'finanzas', 'contenido', 'admin', 'dev'] },
 ];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Check if the route is protected

@@ -44,6 +44,30 @@ export async function updateAppSettings(settings: Partial<AppSettings>) {
   await updateDoc(ref, settings as any);
 }
 
+export async function updateSubscription(subscription: Partial<Subscription>) {
+  const current = await getAppSettings();
+  const updated = {
+    ...current,
+    subscription: {
+      ...current.subscription,
+      ...subscription
+    }
+  };
+  await updateAppSettings(updated);
+}
+
+export async function updateContactInfo(contactInfo: Partial<ContactInfo>) {
+  const current = await getAppSettings();
+  const updated = {
+    ...current,
+    contactInfo: {
+      ...current.contactInfo,
+      ...contactInfo
+    }
+  };
+  await updateAppSettings(updated);
+}
+
 export function subscribeToSettings(callback: (settings: AppSettings) => void) {
   return onSnapshot(
     doc(db, SETTINGS_DOC), 

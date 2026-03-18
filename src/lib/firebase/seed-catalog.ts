@@ -1,7 +1,7 @@
 import { db } from './config';
 import { collection, getDocs, query, where, writeBatch, doc } from 'firebase/firestore';
 
-const CATALOG = [
+export const CATALOG = [
   // --- PISOS 56x56 ---
   {
     "name": "Alerce Brillante", "category": "pisos", "size": "56x56", "finish": "Brillante",

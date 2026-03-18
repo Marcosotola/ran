@@ -34,7 +34,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   cliente: 'Cliente',
   vendedor: 'Vendedor',
   secretaria: 'Secretaria',
-  contenido: 'Contenido',
+  contenido: 'Gestor de Catálogo',
   finanzas: 'Finanzas',
   admin: 'Admin',
   dev: 'Developer',
@@ -144,7 +144,7 @@ export default function UsuariosAdminPage() {
 
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-[#3B82C4]" />
+          <Loader2 className="h-8 w-8 animate-spin text-ran-cerulean" />
         </div>
       ) : (
         <div className="bg-card rounded-2xl border border-border overflow-hidden">

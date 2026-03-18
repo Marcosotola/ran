@@ -22,12 +22,16 @@ export async function getProducts(filters?: {
   category?: ProductCategory;
   size?: string;
   isActive?: boolean;
+  isFeatured?: boolean;
+  isOffer?: boolean;
 }): Promise<Product[]> {
   const constraints: QueryConstraint[] = [];
 
   if (filters?.category) constraints.push(where('category', '==', filters.category));
   if (filters?.size) constraints.push(where('size', '==', filters.size));
   if (filters?.isActive !== undefined) constraints.push(where('isActive', '==', filters.isActive));
+  if (filters?.isFeatured !== undefined) constraints.push(where('isFeatured', '==', filters.isFeatured));
+  if (filters?.isOffer !== undefined) constraints.push(where('isOffer', '==', filters.isOffer));
 
   // No orderBy here to avoid composite index requirements which fail silently/require manual setup
   // Sorting is handled client-side in the CatalogoPage component

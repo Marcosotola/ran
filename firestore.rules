@@ -3,61 +3,57 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper functions
-    function isAuthenticated() {
+    // Funciones de ayuda
+    function isSignedIn() {
       return request.auth != null;
     }
     
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
     
-    function hasRole(role) {
-      return isAuthenticated() && getUserData().role == role;
-    }
-    
-    function isAdmin() {
-      return hasRole('admin');
+    function hasAnyRole(roles) {
+      return isSignedIn() && (getRole() in roles || getRole() == 'admin' || getRole() == 'dev');
     }
 
-    function isSubscriptionActive() {
-      return get(/databases/$(database)/documents/settings/app).data.subscription.status == 'active';
+    // --- CONFIGURACIÓN GLOBAL ---
+    match /settings/app {
+      // Necesario para que la app cargue (onSnapshot en SubscriptionProvider)
+      allow read: if true;
+      allow write: if hasAnyRole([]);
     }
 
-    // Users collection
-    match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin() || request.auth.uid == userId;
-    }
-
-    // Products collection
+    // --- PRODUCTOS ---
     match /products/{productId} {
       allow read: if true;
-      allow write: if isSubscriptionActive() && (hasRole('contenido') || isAdmin());
+      allow write: if hasAnyRole(['contenido']);
     }
 
-    // Quotes collection
+    // --- USUARIOS ---
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || hasAnyRole([]));
+      allow write: if isSignedIn() && (request.auth.uid == userId || hasAnyRole([]));
+    }
+
+    // --- PRESUPUESTOS (QUOTES) ---
     match /quotes/{quoteId} {
-      allow read: if isAuthenticated(); // Vendors and admins can see quotes
-      allow create: if true; // Clients can create quotes via AI chat
-      allow update: if isSubscriptionActive() && (hasRole('vendedor') || isAdmin());
+      allow read: if isSignedIn() && (resource.data.clientId == request.auth.uid || hasAnyRole(['vendedor', 'secretaria']));
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (resource.data.clientId == request.auth.uid || hasAnyRole(['vendedor', 'secretaria']));
     }
 
-    // Sales collection
+    // --- VENTAS Y FINANZAS ---
     match /sales/{saleId} {
-      allow read: if isAuthenticated() && (hasRole('secretaria') || hasRole('finanzas') || isAdmin());
-      allow write: if isSubscriptionActive() && (hasRole('secretaria') || hasRole('vendedor') || isAdmin());
+      allow read, write: if hasAnyRole(['vendedor', 'finanzas']);
     }
-
-    // Expenses collection
+    
     match /expenses/{expenseId} {
-      allow read, write: if isSubscriptionActive() && (hasRole('finanzas') || isAdmin());
+      allow read, write: if hasAnyRole(['finanzas']);
     }
 
-    // Settings
-    match /settings/app {
-      allow read: if true;
-      allow write: if request.auth.uid == 'NEXT_PUBLIC_DEV_UID_PLACEHOLDER'; // Only the dev can change the subscription status manually via rules or dev panel
+    // --- REGLA POR DEFECTO ---
+    match /{document=**} {
+      allow read, write: if hasAnyRole([]);
     }
   }
 }

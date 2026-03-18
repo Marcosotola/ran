@@ -37,6 +37,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
+        // Set session cookie for middleware
+        document.cookie = `ran_session=${firebaseUser.uid}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+        
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
         if (userDoc.exists()) {
           setRanUser(userDoc.data() as RANUser);
@@ -57,6 +60,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setRanUser(newUser);
         }
       } else {
+        // Remove session cookie
+        document.cookie = `ran_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
         setRanUser(null);
       }
       setLoading(false);

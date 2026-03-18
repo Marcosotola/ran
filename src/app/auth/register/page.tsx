@@ -55,7 +55,7 @@ export default function RegisterPage() {
     setGoogleLoading(true);
     try {
       await signInWithGoogle();
-      router.push('/catalogo');
+      window.location.href = '/catalogo';
     } catch {
       toast.error('No se pudo registrar con Google');
     } finally {
@@ -67,16 +67,11 @@ export default function RegisterPage() {
     <div className="min-h-screen ran-gradient-hero flex items-center justify-center p-4">
       <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` }} />
 
-      <div className="relative w-full max-w-md space-y-6 animate-fade-in-up">
-        <div className="text-center">
-          <Link href="/" className="inline-flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl ran-gradient shadow-lg">
-              <span className="text-white font-black text-2xl">R</span>
-            </div>
-            <div className="text-left">
-              <p className="font-bold text-white text-xl">RAN</p>
-              <p className="text-[11px] text-blue-300 font-medium tracking-widest uppercase">Pisos & Revestimientos</p>
-            </div>
+      <div className="relative w-full max-w-md space-y-2 animate-fade-in-up">
+        {/* Logo */}
+        <div className="text-center flex justify-center">
+          <Link href="/">
+            <img src="/logo2Blanco.svg" alt="RAN Logo" className="w-full max-w-[280px] h-auto drop-shadow-xl" />
           </Link>
         </div>
 
@@ -200,8 +195,8 @@ export default function RegisterPage() {
 
           <p className="text-center text-sm text-white/50">
             ¿Ya tenés cuenta?{' '}
-            <Link href="/auth/login" className="text-[#3B82C4] hover:text-[#7BB8F0] font-medium transition-colors">
-              Ingresá acá
+            <Link href="/auth/login" className="text-ran-cerulean hover:underline font-medium">
+              Inicia sesión aquí
             </Link>
           </p>
         </Card>

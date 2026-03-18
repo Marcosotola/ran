@@ -24,13 +24,25 @@ export function formatARS(amount: number): string {
 }
 
 /** Format a date nicely in Spanish */
-export function formatDate(date: Date | undefined): string {
+export function formatDate(date: any): string {
   if (!date) return '—';
+  
+  let d: Date;
+  if (date instanceof Date) {
+    d = date;
+  } else if (typeof date.toDate === 'function') {
+    d = date.toDate();
+  } else {
+    d = new Date(date);
+  }
+
+  if (isNaN(d.getTime())) return '—';
+
   return new Intl.DateTimeFormat('es-AR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  }).format(new Date(date));
+  }).format(d);
 }
 
 /** Truncate string to N chars */

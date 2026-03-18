@@ -20,7 +20,17 @@ import {
   Edit,
   Loader2,
   Box,
+  ArrowUpDown,
+  Star,
+  Tag,
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,7 +48,10 @@ export default function ProductosAdminPage() {
   const [filtered, setFiltered] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'price' | 'stock'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [updatingFieldId, setUpdatingFieldId] = useState<string | null>(null);
 
   useEffect(() => {
     getProducts({})
@@ -50,10 +63,33 @@ export default function ProductosAdminPage() {
   }, []);
 
   useEffect(() => {
-    if (!search) { setFiltered(products); return; }
-    const s = search.toLowerCase();
-    setFiltered(products.filter((p) => p.name.toLowerCase().includes(s) || p.size.includes(s)));
-  }, [products, search]);
+    let result = [...products];
+    
+    // Search
+    if (search) {
+      const s = search.toLowerCase();
+      result = result.filter((p) => 
+        p.name.toLowerCase().includes(s) || 
+        p.size.includes(s) || 
+        p.category.toLowerCase().includes(s)
+      );
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      let valA: any = a[sortBy === 'price' ? 'pricePerM2' : sortBy];
+      let valB: any = b[sortBy === 'price' ? 'pricePerM2' : sortBy];
+      
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    setFiltered(result);
+  }, [products, search, sortBy, sortOrder]);
 
   const toggleActive = async (id: string, current: boolean) => {
     setTogglingId(id);
@@ -78,6 +114,32 @@ export default function ProductosAdminPage() {
     }
   };
 
+  const toggleFeature = async (id: string, current: boolean) => {
+    setUpdatingFieldId(id + '_featured');
+    try {
+      await updateProduct(id, { isFeatured: !current });
+      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, isFeatured: !current } : p)));
+      toast.success(!current ? 'Agregado a Destacados' : 'Quitado de Destacados');
+    } catch {
+      toast.error('Error al actualizar');
+    } finally {
+      setUpdatingFieldId(null);
+    }
+  };
+
+  const toggleOffer = async (id: string, current: boolean) => {
+    setUpdatingFieldId(id + '_offer');
+    try {
+      await updateProduct(id, { isOffer: !current });
+      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, isOffer: !current } : p)));
+      toast.success(!current ? 'Agregado a Ofertas' : 'Quitado de Ofertas');
+    } catch {
+      toast.error('Error al actualizar');
+    } finally {
+      setUpdatingFieldId(null);
+    }
+  };
+
   return (
     <div className="p-6 sm:p-8 space-y-6">
       <div className="flex items-center justify-between">
@@ -93,14 +155,40 @@ export default function ProductosAdminPage() {
         </Button>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar producto..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 text-sm"
-        />
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nombre, categoría..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 text-sm rounded-xl"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+            <SelectTrigger className="w-[140px] rounded-xl text-sm">
+              <ArrowUpDown className="h-3 w-3 mr-2" />
+              <SelectValue placeholder="Ordenar por" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Nombre</SelectItem>
+              <SelectItem value="price">Precio</SelectItem>
+              <SelectItem value="stock">Stock</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={sortOrder} onValueChange={(v: any) => setSortOrder(v)}>
+            <SelectTrigger className="w-[130px] rounded-xl text-sm">
+              <SelectValue placeholder="Orden" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="asc">Ascendente</SelectItem>
+              <SelectItem value="desc">Descendente</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {loading ? (
@@ -109,17 +197,20 @@ export default function ProductosAdminPage() {
         </div>
       ) : (
         <div className="bg-card rounded-2xl border border-border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Producto</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden md:table-cell">Tamaño</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell">Precio/m²</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden lg:table-cell">Stock</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Estado</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Acciones</th>
-              </tr>
-            </thead>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[800px] lg:min-w-full">
+              <thead>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Producto</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden md:table-cell">Tamaño</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell">Precio/m²</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden lg:table-cell">Stock</th>
+                  <th className="text-center px-2 py-3 font-semibold text-muted-foreground" title="Destacado (Más Populares)">⭐</th>
+                  <th className="text-center px-2 py-3 font-semibold text-muted-foreground" title="Oferta (Últimas Ofertas)">🏷️</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Estado</th>
+                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Acciones</th>
+                </tr>
+              </thead>
             <tbody className="divide-y divide-border">
               {filtered.map((product) => (
                 <tr key={product.id} className="hover:bg-muted/30 transition-colors">
@@ -147,6 +238,32 @@ export default function ProductosAdminPage() {
                       {product.stock} cajas
                     </span>
                   </td>
+                  <td className="px-2 py-3 text-center">
+                    <button
+                      onClick={() => toggleFeature(product.id!, !!product.isFeatured)}
+                      disabled={updatingFieldId === product.id + '_featured'}
+                      className={`transition-all hover:scale-110 active:scale-95 disabled:opacity-50 ${product.isFeatured ? 'text-[#C9A84C]' : 'text-slate-300'}`}
+                    >
+                      {updatingFieldId === product.id + '_featured' ? (
+                        <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                      ) : (
+                        <Star className={`h-5 w-5 mx-auto ${product.isFeatured ? 'fill-[#C9A84C]' : ''}`} />
+                      )}
+                    </button>
+                  </td>
+                  <td className="px-2 py-3 text-center">
+                    <button
+                      onClick={() => toggleOffer(product.id!, !!product.isOffer)}
+                      disabled={updatingFieldId === product.id + '_offer'}
+                      className={`transition-all hover:scale-110 active:scale-95 disabled:opacity-50 ${product.isOffer ? 'text-red-500' : 'text-slate-300'}`}
+                    >
+                      {updatingFieldId === product.id + '_offer' ? (
+                        <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                      ) : (
+                        <Tag className={`h-5 w-5 mx-auto ${product.isOffer ? 'fill-red-500/10' : ''}`} />
+                      )}
+                    </button>
+                  </td>
                   <td className="px-4 py-3">
                     <Badge className={product.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}>
                       {product.isActive ? 'Activo' : 'Inactivo'}
@@ -158,6 +275,16 @@ export default function ProductosAdminPage() {
                         size="icon"
                         variant="ghost"
                         className="h-8 w-8"
+                        asChild
+                      >
+                        <Link href={`/admin/productos/${product.id}`} title="Editar">
+                          <Edit className="h-4 w-4 text-[#3B82C4]" />
+                        </Link>
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
                         onClick={() => toggleActive(product.id!, product.isActive)}
                         disabled={togglingId === product.id}
                         title={product.isActive ? 'Desactivar' : 'Activar'}
@@ -165,9 +292,9 @@ export default function ProductosAdminPage() {
                         {togglingId === product.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : product.isActive ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
                           <Eye className="h-4 w-4 text-[#3B82C4]" />
+                        ) : (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
                         )}
                       </Button>
                       <AlertDialog>
@@ -206,6 +333,7 @@ export default function ProductosAdminPage() {
               <p>No se encontraron productos</p>
             </div>
           )}
+          </div>
         </div>
       )}
     </div>

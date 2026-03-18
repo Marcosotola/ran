@@ -22,7 +22,7 @@ export interface RANUser {
 }
 
 // ----- Products -----
-export type ProductCategory = 'pisos' | 'paredes';
+export type ProductCategory = 'pisos' | 'paredes' | 'ambos';
 export type ProductFinish = 'Brillante' | 'Mate' | 'Pulido' | 'Rectificado' | 'Natural' | 'Otro';
 
 export interface Product {
@@ -39,10 +39,13 @@ export interface Product {
   m2PerBox: number;
   piecesPerBox: number;
   weight?: number; // kg per box
+  sku?: string;
   isActive: boolean;
   createdBy: string; // uid
   updatedAt: Date;
   tags?: string[];
+  isFeatured?: boolean;
+  isOffer?: boolean;
 }
 
 // ----- Quotes -----
@@ -152,4 +155,15 @@ export interface Subscription {
   lastPaymentDate?: Date;
   nextPaymentDate?: Date;
   amount: number; // ARS
+}
+
+export interface ContactInfo {
+  phone: string;
+  email: string;
+  address: string;
+  instagram?: string;
+  facebook?: string;
+  whatsapp: string;
+  workingHours?: string;
+  googleMapsEmbed?: string;
 }

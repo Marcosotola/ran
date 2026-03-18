@@ -42,23 +42,40 @@ const StatCard = ({
   color: string;
   href?: string;
   sub?: string;
-}) => (
-  <div className="bg-card rounded-2xl border border-border p-5 ran-card-hover">
-    <div className="flex items-center justify-between mb-3">
-      <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${color}`}>
-        <Icon className="h-5 w-5 text-white" />
+}) => {
+  const content = (
+    <>
+      <div className="flex items-center justify-between mb-3">
+        <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${color}`}>
+          <Icon className="h-5 w-5 text-white" />
+        </div>
+        {href && (
+          <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-ran-cerulean transition-colors" />
+        )}
       </div>
-      {href && (
-        <Link href={href} className="text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      )}
+      <div className="text-2xl font-black mb-0.5">{value}</div>
+      <div className="text-sm text-muted-foreground">{label}</div>
+      {sub && <div className="text-xs text-muted-foreground mt-1 text-ran-slate/60">{sub}</div>}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link 
+        href={href} 
+        className="bg-card rounded-2xl border border-border p-5 ran-card-hover group cursor-pointer block"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="bg-card rounded-2xl border border-border p-5">
+      {content}
     </div>
-    <div className="text-2xl font-black mb-0.5">{value}</div>
-    <div className="text-sm text-muted-foreground">{label}</div>
-    {sub && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
-  </div>
-);
+  );
+};
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -114,7 +131,7 @@ export default function AdminDashboardPage() {
     <div className="p-6 sm:p-8 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-black">Dashboard</h1>
+        <h1 className="text-2xl sm:text-3xl font-black">Panel</h1>
         <p className="text-muted-foreground">Resumen general de RAN Pisos & Revestimientos</p>
       </div>
 
@@ -124,7 +141,7 @@ export default function AdminDashboardPage() {
           label="Productos totales"
           value={stats?.totalProducts ?? 0}
           icon={Package}
-          color="bg-[#1B2A4A]"
+          color="bg-ran-navy"
           href="/admin/productos"
           sub={`${stats?.activeProducts} activos`}
         />
@@ -132,7 +149,7 @@ export default function AdminDashboardPage() {
           label="Presupuestos"
           value={stats?.totalQuotes ?? 0}
           icon={FileText}
-          color="bg-[#3B82C4]"
+          color="bg-ran-cerulean"
           href="/admin/presupuestos"
           sub={`${stats?.pendingQuotes} pendientes`}
         />
@@ -180,8 +197,8 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {/* Recent activity note */}
         <div className="bg-card rounded-2xl border border-border p-6">
-          <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-            <FileText className="h-5 w-5 text-[#3B82C4]" />
+          <h2 className="font-bold text-lg mb-4 flex items-center gap-2 text-ran-navy">
+            <FileText className="h-5 w-5 text-ran-cerulean" />
             Acciones rápidas
           </h2>
           <div className="space-y-2">
@@ -197,7 +214,7 @@ export default function AdminDashboardPage() {
                 className="flex items-center justify-between p-3 rounded-xl hover:bg-muted transition-colors group"
               >
                 <span className="text-sm font-medium">{item.label}</span>
-                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-[#3B82C4] transition-colors" />
+                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-ran-cerulean transition-colors" />
               </Link>
             ))}
           </div>

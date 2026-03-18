@@ -17,7 +17,7 @@ import {
 import { useAuth } from '@/lib/firebase/auth-context';
 
 const adminNavItems = [
-  { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin', label: 'Panel', icon: LayoutDashboard },
   { href: '/admin/usuarios', label: 'Usuarios', icon: Users },
   { href: '/admin/productos', label: 'Productos', icon: Package },
   { href: '/admin/presupuestos', label: 'Presupuestos', icon: FileText },
@@ -25,7 +25,7 @@ const adminNavItems = [
   { href: '/admin/finanzas', label: 'Finanzas', icon: TrendingUp },
   { href: '/admin/reportes', label: 'Reportes', icon: BarChart3 },
   { href: '/admin/subir-productos', label: 'Subir Productos', icon: Upload },
-  { href: '/admin/importar', label: 'Importar Catálogo', icon: Download },
+  { href: '/admin/ajustes', label: 'Ajustes', icon: Settings },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -35,8 +35,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <RoleGuard allowedRoles={['admin']}>
       <div className="min-h-screen flex bg-background">
-        {/* Sidebar */}
-        <aside className="w-64 shrink-0 border-r border-border bg-card hidden lg:flex flex-col">
+        {/* Sidebar - Adjusted for Global Navbar */}
+        <aside className="w-64 shrink-0 border-r border-border bg-card hidden lg:flex flex-col sticky top-22 h-[calc(100vh-88px)]">
           {/* Brand */}
           <div className="p-4 border-b border-border">
             <div className="ran-gradient rounded-xl p-3 flex items-center gap-3">
@@ -45,7 +45,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </div>
               <div>
                 <p className="text-white font-bold text-sm">Panel Admin</p>
-                <p className="text-white/60 text-xs truncate max-w-32">{ranUser?.displayName}</p>
+                <p className="text-white/70 text-xs truncate max-w-32">{ranUser?.displayName || 'Admin'}</p>
               </div>
             </div>
           </div>
@@ -82,8 +82,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </aside>
 
-        {/* Mobile top nav */}
-        <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-card border-b border-border px-4 py-3 flex items-center gap-3 overflow-x-auto">
+        {/* Mobile top nav - Adjusted for Global Navbar */}
+        <div className="lg:hidden fixed top-22 left-0 right-0 z-40 bg-card border-b border-border px-4 py-3 flex items-center gap-3 overflow-x-auto">
           {adminNavItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
             return (
@@ -101,7 +101,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </div>
 
-        {/* Main content */}
+        {/* Main content - Adjusted for Global Navbar */}
         <main className="flex-1 overflow-auto lg:pt-0 pt-14">
           {children}
         </main>

@@ -21,6 +21,8 @@ export const metadata: Metadata = {
 
 import { SubscriptionProvider } from '@/lib/contexts/subscription-context';
 import { SubscriptionBanner } from '@/components/common/SubscriptionBanner';
+import { Navbar } from '@/components/layout/Navbar';
+import { Footer } from '@/components/layout/Footer';
 
 export default function RootLayout({
   children,
@@ -40,8 +42,14 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <SubscriptionProvider>
-            <SubscriptionBanner />
-            {children}
+            <div className="flex min-h-screen flex-col">
+              <SubscriptionBanner />
+              <Navbar />
+              <main className="flex-1">
+                {children}
+              </main>
+              <Footer />
+            </div>
             <Toaster richColors position="top-right" />
           </SubscriptionProvider>
         </AuthProvider>

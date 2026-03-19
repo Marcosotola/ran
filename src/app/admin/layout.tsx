@@ -39,7 +39,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <aside className="w-64 shrink-0 border-r border-border bg-card hidden lg:flex flex-col sticky top-22 h-[calc(100vh-88px)]">
           {/* Brand */}
           <div className="p-4 border-b border-border">
-            <div className="ran-gradient rounded-xl p-3 flex items-center gap-3">
+            <div className="bg-ran-slate rounded-xl p-3 flex items-center gap-3">
               <div className="h-8 w-8 bg-white/20 rounded-lg flex items-center justify-center">
                 <Settings className="h-4 w-4 text-white" />
               </div>
@@ -60,7 +60,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   href={item.href}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
                     isActive
-                      ? 'ran-gradient text-white shadow-sm'
+                      ? 'bg-ran-slate text-white shadow-sm'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
@@ -91,7 +91,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={item.href}
                 href={item.href}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all shrink-0 ${
-                  isActive ? 'ran-gradient text-white' : 'border border-border text-muted-foreground hover:text-foreground'
+                  isActive ? 'bg-ran-slate text-white' : 'border border-border text-muted-foreground hover:text-foreground'
                 }`}
               >
                 <item.icon className="h-3 w-3" />

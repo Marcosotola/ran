@@ -82,7 +82,10 @@ const ProductCarousel = ({ title, products, icon: Icon }: { title: string; produ
         <div className="relative group">
           <div className="flex gap-6 overflow-x-auto pb-8 scrollbar-hide snap-x snap-mandatory px-1">
             {products.map((p) => (
-              <div key={p.id} className="min-w-[280px] sm:min-w-[320px] snap-center">
+              <div 
+                key={p.id} 
+                className="min-w-[260px] sm:min-w-[calc(100%/2-1.5rem)] md:min-w-[calc(100%/3-1.5rem)] lg:min-w-[calc(100%/4-1.5rem)] xl:min-w-[calc(100%/5-1.5rem)] snap-center"
+              >
                 <ProductCard product={p} />
               </div>
             ))}

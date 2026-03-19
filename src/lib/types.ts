@@ -73,6 +73,8 @@ export interface Quote {
   status: QuoteStatus;
   assignedVendorId?: string;
   aiConversationLog: ChatMessage[];
+  shipping?: number;
+  notes?: string;
   createdAt: Date;
   acceptedAt?: Date;
 }
@@ -106,6 +108,7 @@ export interface Sale {
   vendorId: string;
   items: QuoteItem[];
   totalAmount: number;
+  shipping?: number;
   paymentMethod: PaymentMethod;
   status: SaleStatus;
   notes?: string;

@@ -15,6 +15,7 @@ import {
   AlertCircle,
   ShoppingCart,
   ArrowRight,
+  Settings,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -77,11 +78,16 @@ const StatCard = ({
   );
 };
 
+import { useAuth } from '@/lib/firebase/auth-context';
+
 export default function AdminDashboardPage() {
+  const { ranUser, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading || !ranUser || ranUser.role !== 'admin') return;
+
     async function loadStats() {
       try {
         const [products, quotes, usersSnap] = await Promise.all([
@@ -191,6 +197,14 @@ export default function AdminDashboardPage() {
           href="/admin/finanzas"
           sub="Ver ingresos/egresos"
         />
+        <StatCard
+          label="Ajustes"
+          value="→"
+          icon={Settings}
+          color="bg-slate-600"
+          href="/admin/ajustes"
+          sub="Configuración del sistema"
+        />
       </div>
 
       {/* Quick links cards */}
@@ -236,10 +250,17 @@ export default function AdminDashboardPage() {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">IA (Gemini)</span>
-              <span className="flex items-center gap-1.5 text-xs text-amber-500 font-medium">
-                <span className="h-2 w-2 rounded-full bg-amber-500" />
-                Requiere API key
-              </span>
+              {process.env.NEXT_PUBLIC_HAS_GEMINI === 'true' ? (
+                <span className="flex items-center gap-1.5 text-xs text-green-500 font-medium">
+                  <span className="h-2 w-2 rounded-full bg-green-500" />
+                  Activo
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-xs text-amber-500 font-medium">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  Requiere configuración
+                </span>
+              )}
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">MercadoPago</span>

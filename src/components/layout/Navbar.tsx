@@ -171,8 +171,8 @@ export function Navbar() {
                     className={`flex items-center gap-2 rounded-lg px-3 py-2 transition-colors
                     ${textColor} ${hoverBg}`}
                   >
-                    <Avatar className="h-7 w-7">
-                      <AvatarFallback className="bg-ran-cerulean text-white text-xs font-bold">
+                    <Avatar className="h-9 w-9 border border-ran-cerulean/20 shadow-sm transition-transform hover:scale-105">
+                      <AvatarFallback className="bg-ran-cerulean text-white text-sm font-black">
                         {initials}
                       </AvatarFallback>
                     </Avatar>
@@ -213,10 +213,10 @@ export function Navbar() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className={`flex items-center justify-center rounded-lg p-2 transition-colors ${textColor} ${hoverBg}`}
+                    className={`flex items-center justify-center rounded-full p-2.5 transition-all hover:bg-ran-cerulean/10 ${textColor} ${hoverBg}`}
                     aria-label="Acceder a mi cuenta"
                   >
-                    <UserCircle className="h-6 w-6" />
+                    <UserCircle className="h-8 w-8" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">

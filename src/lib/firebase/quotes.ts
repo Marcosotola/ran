@@ -8,6 +8,7 @@ import {
   getDoc,
   addDoc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
   limit,
 } from 'firebase/firestore';
@@ -74,6 +75,16 @@ export async function getAllQuotes(statusFilter?: QuoteStatus): Promise<Quote[]>
   })) as Quote[];
 }
 
+export async function updateQuote(
+  id: string,
+  data: Partial<Omit<Quote, 'id' | 'createdAt'>>,
+): Promise<void> {
+  await updateDoc(doc(db, QUOTES_COL, id), {
+    ...data,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function updateQuoteStatus(
   id: string,
   status: QuoteStatus,
@@ -83,11 +94,16 @@ export async function updateQuoteStatus(
     status,
     ...(extra ?? {}),
     ...(status === 'accepted' ? { acceptedAt: serverTimestamp() } : {}),
+    updatedAt: serverTimestamp(),
   });
 }
 
 export async function updateQuoteLog(id: string, messages: ChatMessage[]): Promise<void> {
   await updateDoc(doc(db, QUOTES_COL, id), { aiConversationLog: messages });
+}
+
+export async function deleteQuote(id: string): Promise<void> {
+  await deleteDoc(doc(db, QUOTES_COL, id));
 }
 
 /** Pick a random available vendor to assign to a new quote */

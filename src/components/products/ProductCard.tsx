@@ -8,12 +8,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MessageSquare, Eye, Box } from 'lucide-react';
+import { useAuth, hasRole } from '@/lib/firebase/auth-context';
 
 interface ProductCardProps {
   product: Product;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+  const { role } = useAuth();
+  const canSeePrices = hasRole(role, ['vendedor', 'finanzas']);
   const coverImage = product.images?.[0] || null;
 
   return (
@@ -65,24 +68,34 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2 pt-1">
-          <Button className="flex-[2] ran-gradient text-white border-0 hover:opacity-90 h-9 text-xs font-bold" size="sm" asChild>
-            <Link href={`/catalogo/${product.id}`}>
-              <Eye className="h-3.5 w-3.5 mr-1.5" />
-              Ver detalle
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 h-9 border-ran-cerulean/30 hover:bg-ran-cerulean/10 hover:border-ran-cerulean text-ran-cerulean font-bold text-[10px]"
-            asChild
-          >
-            <Link href={`/chat?producto=${product.id}`} title="Consultar con IA">
-              <MessageSquare className="h-3.5 w-3.5 mr-1" />
-              IA
-            </Link>
-          </Button>
+        <div className="flex flex-col gap-3 pt-1">
+          {canSeePrices && (
+            <div className="flex items-center justify-between text-[11px] font-bold border-b border-border/50 pb-2 mb-1">
+              <span className="text-ran-navy">{formatARS(product.pricePerM2)}/m²</span>
+              <span className={product.stock === 0 ? 'text-red-500' : product.stock < 10 ? 'text-amber-500' : 'text-green-600'}>
+                Stock: {product.stock}
+              </span>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Button className="flex-[2] ran-gradient text-white border-0 hover:opacity-90 h-9 text-xs font-bold shadow-sm" size="sm" asChild>
+              <Link href={`/catalogo/${product.id}`}>
+                <Eye className="h-3.5 w-3.5 mr-1.5" />
+                Ver detalle
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 h-9 border-ran-cerulean/30 hover:bg-ran-cerulean/10 hover:border-ran-cerulean text-ran-cerulean font-bold text-[10px]"
+              asChild
+            >
+              <Link href={`/chat?producto=${product.id}`} title="Consultar con IA">
+                <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                IA
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
     </Card>

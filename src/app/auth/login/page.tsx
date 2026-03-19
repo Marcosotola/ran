@@ -29,7 +29,17 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signIn(email, password);
-      window.location.href = redirect;
+      // Smart redirect based on role if at root
+      if (redirect === '/') {
+        // Fetch role manually after login if result is void
+        const { getDoc, doc } = await import('firebase/firestore');
+        const { db } = await import('@/lib/firebase/config');
+        const userSnap = await getDoc(doc(db, 'users', (await import('@/lib/firebase/config')).auth.currentUser?.uid || ''));
+        const target = userSnap.data()?.role === 'admin' ? '/admin' : '/vendedor';
+        window.location.href = target;
+      } else {
+        window.location.href = redirect;
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al iniciar sesión';
       toast.error(msg.includes('invalid-credential') ? 'Email o contraseña incorrectos' : 'Error al iniciar sesión');

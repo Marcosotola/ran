@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { getProducts } from '@/lib/firebase/products';
-import { createSale } from '@/lib/firebase/sales';
+import { createDirectSale } from '@/lib/firebase/sales';
 import { getAllQuotes } from '@/lib/firebase/quotes';
 import { toast } from 'sonner';
 import { Product, Quote } from '@/lib/types';
@@ -91,7 +91,7 @@ export default function SecretariaPage() {
 
       const total = saleItems.reduce((s, i) => s + i.subtotal, 0);
 
-      await createSale({
+      await createDirectSale({
         clientId: 'manual',
         clientName: newSale.clientName,
         vendorId: ranUser?.uid ?? 'none',

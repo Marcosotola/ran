@@ -24,12 +24,18 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const pathname = usePathname();
 
   useEffect(() => {
-    const unsubscribe = subscribeToSettings((newSettings) => {
+    let unsubscribe: (() => void) | undefined;
+    
+    // We always want to subscribe to settings, but if it fails due to permissions (e.g. on logout)
+    // the error handler in subscribeToSettings will handle it and return default settings.
+    unsubscribe = subscribeToSettings((newSettings) => {
       setSettings(newSettings);
       setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   const isActive = settings?.subscription.status === 'active';

@@ -35,6 +35,7 @@ import {
   Filter
 } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useAuth, hasRole } from '@/lib/firebase/auth-context';
 
 const CATEGORIES = [
   { value: 'pisos', label: 'Pisos' },
@@ -48,6 +49,9 @@ const FINISHES: ProductFinish[] = ['Brillante', 'Mate', 'Pulido', 'Rectificado',
 
 const SORTS = [
   { value: 'name', label: 'Nombre A–Z' },
+];
+
+const EXTENDED_SORTS = [
   { value: 'price-asc', label: 'Precio: menor a mayor' },
   { value: 'price-desc', label: 'Precio: mayor a menor' },
 ];
@@ -55,6 +59,8 @@ const SORTS = [
 export default function CatalogoPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { role } = useAuth();
+  const canSeePrices = hasRole(role, ['vendedor', 'finanzas']);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,7 +174,7 @@ export default function CatalogoPage() {
               onClick={() => toggleFilter(selectedSizes, setSelectedSizes, s)}
               className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
                 selectedSizes.includes(s)
-                  ? 'ran-gradient text-white border-transparent shadow-md scale-105'
+                  ? 'bg-ran-slate text-white border-transparent shadow-md scale-105'
                   : 'border-border bg-white text-muted-foreground hover:border-ran-cerulean hover:text-ran-cerulean'
               }`}
             >
@@ -304,6 +310,9 @@ export default function CatalogoPage() {
                     {SORTS.map((s) => (
                       <SelectItem key={s.value} value={s.value} className="font-medium">{s.label}</SelectItem>
                     ))}
+                    {canSeePrices && EXTENDED_SORTS.map((s) => (
+                      <SelectItem key={s.value} value={s.value} className="font-medium">{s.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -352,12 +361,12 @@ export default function CatalogoPage() {
                 <p className="text-muted-foreground mb-8 max-w-sm font-medium">
                   {search ? `No encontramos productos para "${search}".` : 'Probá combinando otros filtros para encontrar lo que buscás.'}
                 </p>
-                <Button variant="default" onClick={clearFilters} className="ran-gradient text-white border-0 font-bold px-8 rounded-xl h-12 shadow-lg">
+                <Button variant="default" onClick={clearFilters} className="bg-ran-slate text-white border-0 font-bold px-8 rounded-xl h-12 shadow-lg">
                   Limpiar Filtros
                 </Button>
               </Card>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 animate-fade-in-up">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fade-in-up">
                 {filteredProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}

@@ -1,112 +1,113 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
+import { dbAdmin } from '@/lib/firebase/admin-config';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? '');
-
-const SYSTEM_PROMPT = `Eres el asistente de ventas de RAN Pisos & Revestimientos, una empresa argentina especializada en pisos y revestimientos cerámicos.
-
-Tu nombre es RANI (RAN Inteligencia).
-
-## Tu rol:
-- Asesorar a los clientes sobre qué productos elegir para su espacio
-- Calcular cuántas cajas necesitan según los m² que indiquen (con 10% de desperdicio)
-- Generar presupuestos con los productos que el cliente elija
-- Ser amigable, profesional y hablar en español rioplatense (vos, che, etc.)
-
-## Reglas IMPORTANTES:
-1. NO incluyes costos de mano de obra, pegamento ni pastina — SOLO el costo de los materiales (cajas de cerámicos)
-2. Si el cliente pregunta por mano de obra, decí que eso se coordina directamente con el vendedor asignado
-3. Cuando calcules cajas, SIEMPRE agrega 10% de desperdicio: cajas = ceil(m² * 1.10 / m²_por_caja)
-4. Cuando el cliente esté listo para aceptar el presupuesto, pedí su nombre, email y teléfono
-5. Solo transfiere la información de contacto cuando el cliente ACEPTE explícitamente el presupuesto
-
-## Catálogo disponible (resumen por formato):
-- Pisos 56×56 cm: ~27 modelos, acabados brillante/mate/pulido
-- Pisos 35×35 cm: ~33 modelos, variedad de colores y acabados  
-- Pisos 18×56 cm (tipo madera): ~12 modelos
-- Pisos/Paredes 31×53 cm: ~23 modelos
-
-## Información de precios y especificaciones:
-Los precios exactos dependen del modelo. Cuando el cliente elija un producto, consultá el catálogo para dar el precio correcto. Si no tenés el precio exacto, decile que se lo confirma el vendedor.
-
-## Flujo de atención:
-1. Saludar y preguntar qué ambiente quiere revestir
-2. Consultar m² aproximados
-3. Recomendar 2-3 opciones de productos según el estilo y presupuesto
-4. Calcular cajas necesarias
-5. Mostrar presupuesto de materiales
-6. Preguntar si quiere proceder — si sí, pedir datos de contacto
-
-## Formato de presupuesto (cuando lo generes):
-Usar este formato exacto para que el sistema lo detecte:
-
-PRESUPUESTO_GENERADO:
-- Producto: [nombre]
-- Tamaño: [XxY cm]
-- m²: [número]
-- Cajas: [número]
-- Precio/caja: $[precio]
-- Subtotal: $[precio]
-TOTAL_MATERIALES: $[total]
-
-Sé cálido, útil y no presiones al cliente. Si tiene dudas, ayudalo a entender las diferencias entre productos.`;
+const genAI = new GoogleGenAI({ 
+  apiKey: (process.env.GEMINI_API_KEY ?? '').trim() 
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, context } = await req.json();
+    const body = await req.json();
+    const { messages, context, userName, userRole = 'cliente' } = body;
 
     if (!process.env.GEMINI_API_KEY) {
-      // Mock response when no API key is configured
-      return NextResponse.json({
-        message: generateMockResponse(messages[messages.length - 1]?.content ?? ''),
-        mock: true,
-      });
+      return NextResponse.json({ message: "Configura la KEY de Gemini." });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // 1. Bypassing Client SDK security via Admin SDK for the Chat Context
+    // We fetch products and settings directly through Admin SDK
+    const [productsSnap, settingsSnap] = await Promise.all([
+      dbAdmin.collection('products').where('isActive', '==', true).get(),
+      dbAdmin.collection('settings').doc('app').get()
+    ]);
 
-    // Build chat history (excluding last message which is the new one)
-    const history = messages.slice(0, -1).map((m: { role: string; content: string }) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    }));
+    const products = productsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+    const settings = settingsSnap.exists ? settingsSnap.data() as any : null;
 
-    const chat = model.startChat({
-      history,
-      systemInstruction: SYSTEM_PROMPT + (context ? `\n\nContexto adicional: ${context}` : ''),
-    });
+    const privilegedRoles = ['admin', 'vendedor', 'secretaria', 'finanzas', 'dev'];
+    const canSeePrices = privilegedRoles.includes(userRole);
 
-    const lastMessage = messages[messages.length - 1];
-    const result = await chat.sendMessage(lastMessage.content);
-    const text = result.response.text();
+    const productList = products.map(p => {
+      const base = `- ${p.name}: ${p.size}, ${p.finish}.`;
+      const price = canSeePrices ? ` $${p.pricePerM2}/m². Stock: ${p.stock} cj.` : ' [Pedir cotización]';
+      return `${base}${price}${p.isOffer ? ' [OFERTA]' : ''}${p.images?.[0] ? ` [Img: ${p.images[0]}]` : ''}`;
+    }).join('\n');
+
+    const SYSTEM_PROMPT = `Eres RANI, asistente de "RAN Pisos".
+Voseo rioplatense.
+${userName ? `Le hablas a ${userName}.` : ''}
+
+## FLUJO DE TRABAJO (OBLIGATORIO):
+1. Charla y recomendación de productos. MUESTRA FOTOS con ![nombre](url).
+2. Pregunta metros del ambiente.
+3. CALCULA: m2 * 1.10 (desperdicio). Redondea cajas arriba.
+4. MUESTRA EL PRESUPUESTO COMPLETO (en una tabla con etiquetas [MATERIAL]).
+5. SÓLO DESPUÉS de mostrar el presupuesto, pide Nombre, Email o Celular.
+
+## REGLAS CRÍTICAS:
+- NUNCA pidas datos de contacto antes de mostrar el presupuesto final. El valor para el cliente es el cálculo.
+- IMÁGENES: Usá SIEMPRE ![nombre](URL). Si no ponés el '!', no se ve.
+
+## CATÁLOGO:
+${productList}
+
+## FORMATO PRESUPUESTO:
+PRESUPUESTO_GENERADO:
+[MATERIAL]
+- Producto: [Nombre]
+- m2_cliente: [m²]
+- Cajas: [cant]
+- Precio_caja: $[monto]
+- Subtotal: $[monto]
+[FIN_MATERIAL]
+TOTAL_MATERIALES: $[total]`;
+
+    // 2. Model Rotation - Handling Rate Limits (Free Tier quota)
+    // Adding more variants to bypass potential specific model quotas
+    const models = [
+      'gemini-2.0-flash', 
+      'gemini-2.5-flash', 
+      'gemini-2.0-flash-lite', 
+      'gemini-1.5-pro'
+    ];
+    let text = '';
+    let success = false;
+    let quotaError = false;
+
+    for (const modelId of models) {
+      if (success) break;
+      try {
+        console.log(`[Chat API] Executing via ${modelId}...`);
+        const response = await genAI.models.generateContent({
+          model: modelId,
+          contents: (messages || []).map((m: any) => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content }]
+          })),
+          config: { systemInstruction: SYSTEM_PROMPT }
+        });
+
+        if (response.text) {
+          text = response.text;
+          success = true;
+        }
+      } catch (err: any) {
+        console.warn(`[Chat API] ${modelId} failed:`, err.message);
+        if (err.message?.includes('RESOURCE_EXHAUSTED')) quotaError = true;
+      }
+    }
+
+    if (!success) {
+      const msg = quotaError 
+        ? "Lo siento, RANI está un poco cansada por hoy (límite de cuota excedido). Por favor reintentá en unos minutos o contactanos por WhatsApp."
+        : "Error de conexión con RANI.";
+      return NextResponse.json({ message: msg });
+    }
 
     return NextResponse.json({ message: text });
-  } catch (err) {
-    console.error('[Chat API Error]', err);
-    return NextResponse.json(
-      { error: 'Error al procesar el mensaje. Intentá de nuevo.' },
-      { status: 500 },
-    );
+  } catch (err: any) {
+    console.error('[Chat API Error]:', err);
+    return NextResponse.json({ message: "Ups! Hubo un problema al procesar tu mensaje." });
   }
-}
-
-function generateMockResponse(userMessage: string): string {
-  const msg = userMessage.toLowerCase();
-
-  if (msg.includes('hola') || msg.includes('buenos') || msg.includes('buenas')) {
-    return '¡Hola! Soy RANI, el asistente de RAN Pisos & Revestimientos 👋\n\n¿En qué te puedo ayudar hoy? Podés contarme qué ambiente querés renovar y te ayudo a elegir el mejor piso o revestimiento.';
-  }
-  if (msg.includes('baño') && (msg.includes('m2') || msg.includes('m²') || /\d/.test(msg))) {
-    const match = msg.match(/(\d+(?:\.\d+)?)/);
-    const m2 = match ? parseFloat(match[1]) : 8;
-    const boxes = Math.ceil((m2 * 1.1) / 1.56);
-    return `¡Genial! Para un baño de ${m2} m², te recomiendo revestimientos de pared en formato 31×53 cm.\n\nCalculando con 10% de desperdicio:\n- **Cajas necesarias: ${boxes} cajas** (${(1.56 * boxes).toFixed(1)} m² aprox.)\n\nTe recomiendo estos modelos:\n1. **Revestimiento Blanco Brillante 31×53** — ideal para ampliar visualmente el espacio\n2. **Revestimiento Gris Perla 31×53** — moderno y fácil de mantener\n3. **Revestimiento Mármol Blanco 31×53** — premium y elegante\n\n¿Cuál de estos te gusta más? También te puedo calcular el presupuesto si me decís cuál preferís.`;
-  }
-  if (msg.includes('precio') || msg.includes('costo') || msg.includes('cuanto')) {
-    return 'Los precios varían según el modelo y el formato. Aquí te doy un rango general:\n\n- **Pisos 35×35 cm:** desde $8.000 hasta $15.000 por caja\n- **Pisos 56×56 cm:** desde $12.000 hasta $22.000 por caja\n- **Revestimientos 31×53 cm:** desde $9.000 hasta $18.000 por caja\n\n*Los precios están en ARS. Para un presupuesto exacto, contame qué ambiente y cuántos m² tenés 🙂*';
-  }
-  if (msg.includes('presupuesto') || msg.includes('cotizacion') || msg.includes('cotización')) {
-    return 'Para hacerte un presupuesto preciso necesito saber:\n\n1. 📐 ¿Cuántos m² tiene el ambiente?\n2. 🛋️ ¿Es piso o pared (o ambos)?\n3. 🎨 ¿Tenés alguna preferencia de color o estilo?\n\nCon eso te armo el presupuesto con la cantidad exacta de cajas que necesitás.';
-  }
-  return 'Entendido! Estoy acá para ayudarte a elegir el mejor piso o revestimiento.\n\n¿Podés contarme qué ambiente querés renovar y cuántos m² tiene aproximadamente? Así te puedo dar una recomendación personalizada y calcular exactamente cuántas cajas necesitás 😊';
 }

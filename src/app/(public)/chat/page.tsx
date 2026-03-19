@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/firebase/auth-context';
-import { createQuote, assignRandomVendor } from '@/lib/firebase/quotes';
 import { getProduct } from '@/lib/firebase/products';
 import { ChatMessage, QuoteItem } from '@/lib/types';
 import { calcBoxes, formatARS } from '@/lib/utils/calculations';
@@ -19,39 +18,61 @@ import {
   CheckCircle2,
   Sparkles,
   MessageSquare,
+  Package,
 } from 'lucide-react';
-// We'll use a simple markdown renderer for chat messages
-const MarkdownMessage = ({ content }: { content: string }) => (
-  <div className="prose prose-sm dark:prose-invert max-w-none text-current leading-relaxed text-sm
-    [&>p]:mb-2 [&>p:last-child]:mb-0
-    [&>ul]:mb-2 [&>ul]:pl-4 [&>ul>li]:mb-0.5
-    [&>ol]:mb-2 [&>ol]:pl-4
-    [&>strong]:font-bold
-  ">
-    {content.split('\n').map((line, i) => {
-      // Bold
-      const parts = line.split(/(\*\*[^*]+\*\*)/g).map((part, j) =>
-        part.startsWith('**') && part.endsWith('**')
-          ? <strong key={j}>{part.slice(2, -2)}</strong>
-          : part
-      );
-      if (line.startsWith('- ') || line.startsWith('• ')) {
-        return <p key={i} className="pl-3">• {parts.slice(1)}</p>;
-      }
-      if (line.trim() === '') return <br key={i} />;
-      return <p key={i} className="mb-1">{parts}</p>;
-    })}
-  </div>
-);
+
+const MarkdownMessage = ({ content }: { content: string }) => {
+  // Regex to find ![alt](url)
+  const IMG_REGEX = /!\[(.*?)\]\((.*?)\)/g;
+  
+  return (
+    <div className="prose prose-sm dark:prose-invert max-w-none text-current leading-relaxed text-sm
+      [&>p]:mb-2 [&>p:last-child]:mb-0
+      [&>strong]:font-bold
+    ">
+      {content.split('\n\n').map((block, i) => {
+        // Find if this whole block has an image
+        const hasImage = block.match(IMG_REGEX);
+        
+        if (hasImage) {
+          const parts = block.split(IMG_REGEX);
+          // parts will be [text_before, alt, url, text_after, ...]
+          const renderedParts = [];
+          for (let j = 0; j < parts.length; j += 3) {
+            renderedParts.push(<span key={`text-${j}`}>{parts[j]}</span>);
+            if (parts[j+1] !== undefined) {
+              renderedParts.push(
+                <div key={`img-${j}`} className="my-3 rounded-xl overflow-hidden border border-[#3B82F6]/20 bg-muted/30 shadow-md">
+                  <img src={parts[j+2]} alt={parts[j+1]} className="w-full aspect-video object-cover" />
+                  <p className="text-[10px] text-muted-foreground px-3 py-2 italic bg-background/50">{parts[j+1]}</p>
+                </div>
+              );
+            }
+          }
+          return <p key={i}>{renderedParts}</p>;
+        }
+
+        // Support bold and simple text
+        const parts = block.split(/(\*\*[^*]+\*\*)/g).map((part, k) =>
+          part.startsWith('**') && part.endsWith('**')
+            ? <strong key={k}>{part.slice(2, -2)}</strong>
+            : part
+        );
+
+        return <p key={i} className="mb-2 leading-relaxed">{parts}</p>;
+      })}
+    </div>
+  );
+};
 
 const WELCOME = `¡Hola! 👋 Soy **RANI**, el asistente de **RAN Pisos & Revestimientos**.
 
-Puedo ayudarte a:
-- Elegir el piso o revestimiento ideal para tu espacio
-- Calcular cuántas cajas necesitás según los m²
-- Generar un presupuesto de materiales
+Elegir el piso ideal es una gran decisión. Puedo ayudarte con:
+1. Recomendaciones según tu estilo
+2. Cálculo de cajas necesarias
+3. Presupuesto detallado para tu obra
 
-¿Qué ambiente querés renovar?`;
+¿Qué proyecto tenés en mente hoy?`;
 
 interface ContactForm {
   name: string;
@@ -73,54 +94,113 @@ export default function ChatPage() {
   const [contactForm, setContactForm] = useState<ContactForm>({
     name: ranUser?.displayName ?? '',
     email: ranUser?.email ?? '',
-    phone: ranUser?.phone ?? '',
+    phone: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [quoteDone, setQuoteDone] = useState(false);
-  const [detectedQuote, setDetectedQuote] = useState<QuoteItem | null>(null);
+  const [detectedItems, setDetectedItems] = useState<QuoteItem[]>([]);
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!containerRef.current) return;
+    const lastMsg = messages[messages.length - 1];
+    if (messages.length <= 1) return;
+    if (lastMsg?.role === 'assistant') {
+      const bubbles = containerRef.current.querySelectorAll('.assistant-bubble');
+      const lastBubble = bubbles[bubbles.length - 1];
+      if (lastBubble) lastBubble.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
   }, [messages, loading]);
 
-  // If product context, send initial message
   useEffect(() => {
     if (productId) {
       getProduct(productId).then((p) => {
-        if (!p) return;
-        const ctxMsg = `Tengo una consulta sobre el producto: ${p.name} (${p.size} cm, ${p.finish}). Precio: ${formatARS(p.pricePerM2)}/m². ¿Podés ayudarme?`;
-        handleSend(ctxMsg);
+        if (p) handleSend(`Estoy interesado en el producto: ${p.name}. ¿Me podés dar más info?`);
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId]);
 
-  const detectQuoteInResponse = (text: string): QuoteItem | null => {
-    if (!text.includes('PRESUPUESTO_GENERADO:')) return null;
-    try {
-      const lines = text.split('\n');
-      const nameMatch = lines.find((l) => l.includes('Producto:'))?.match(/Producto:\s*(.+)/)?.[1];
-      const m2Match = lines.find((l) => l.includes('m²:'))?.match(/m²:\s*([\d.]+)/)?.[1];
-      const boxesMatch = lines.find((l) => l.includes('Cajas:'))?.match(/Cajas:\s*(\d+)/)?.[1];
-      const priceMatch = lines.find((l) => l.includes('Precio/caja:'))?.match(/\$([\d.,]+)/)?.[1];
-      const subtotalMatch = lines.find((l) => l.includes('Subtotal:'))?.match(/\$([\d.,]+)/)?.[1];
-      if (!nameMatch || !m2Match || !boxesMatch || !priceMatch) return null;
-      const price = parseFloat(priceMatch.replace(/\./g, '').replace(',', '.'));
-      return {
-        productId: 'ai-generated',
-        name: nameMatch.trim(),
-        size: '?',
-        m2: parseFloat(m2Match),
-        boxes: parseInt(boxesMatch),
-        pricePerBox: price,
-        subtotal: subtotalMatch ? parseFloat(subtotalMatch.replace(/\./g, '').replace(',', '.')) : price * parseInt(boxesMatch),
-      };
-    } catch {
-      return null;
+  const detectQuotesInResponse = (text: string): QuoteItem[] => {
+    // We remove the strict requirement for 'PRESUPUESTO_GENERADO:' 
+    // because if RANI writes [MATERIAL], we WANT to catch it.
+    if (!text.includes('[MATERIAL]') && !text.includes('Producto:')) return [];
+    
+    const items: QuoteItem[] = [];
+
+    // Lighter, more flexible regex for numbers that might have dots or commas
+    const num = (v?: string) => {
+      if (!v) return 0;
+      // Remove $ and non-numeric chars except . and ,
+      const cleaned = v.replace(/[^\d.,]/g, '');
+      if (cleaned.includes(',') && cleaned.includes('.')) {
+        // Likely thousands dot and decimal comma like 1.234,56
+        return parseFloat(cleaned.replace(/\./g, '').replace(',', '.'));
+      }
+      return parseFloat(cleaned.replace(',', '.')) || 0;
+    };
+
+    // New multi-material logic with more robust split
+    const parts = text.split(/\[MATERIAL\]/i);
+    parts.shift(); // Remove content before first [MATERIAL]
+
+    for (const p of parts) {
+      try {
+        const content = p.split(/\[FIN_MATERIAL\]/i)[0];
+        const lines = content.split('\n').map(l => l.trim());
+        
+        // Use more liberal matching
+        const findVal = (key: string) => lines.find(l => l.toLowerCase().includes(key.toLowerCase()))?.split(':')[1]?.trim() || '';
+        
+        const name = findVal('Producto');
+        const m2 = num(findVal('m2_cliente'));
+        const boxes = parseInt(findVal('Cajas').replace(/\D/g, '')) || 0;
+        const price = num(findVal('Precio_caja'));
+        const subtotal = num(findVal('Subtotal'));
+
+        if (name && (boxes > 0 || m2 > 0)) {
+          items.push({
+            productId: 'ai-' + Math.random().toString(36).slice(2, 7),
+            name,
+            size: '',
+            m2,
+            boxes,
+            pricePerBox: price,
+            subtotal: subtotal || (price * boxes)
+          });
+        }
+      } catch (e) {
+        console.warn('Error parsing block:', e);
+      }
     }
+
+    // Fallback for old single-line format if no [MATERIAL] blocks found
+    if (items.length === 0) {
+      const nameMatch = text.match(/Producto:\s*([^\n]+)/i)?.[1];
+      const m2Match = text.match(/m2_cliente:\s*([\d.,]+)/i)?.[1];
+      const boxesMatch = text.match(/Cajas:\s*(\d+)/)?.[1];
+      const priceMatch = text.match(/Precio_caja:\s*\$?\s*([\d.,]+)/i)?.[1];
+
+      if (nameMatch && (boxesMatch || m2Match)) {
+        const boxes = parseInt(boxesMatch || '0');
+        const price = num(priceMatch);
+        items.push({
+          productId: 'ai-fallback',
+          name: nameMatch.trim(),
+          size: '',
+          m2: num(m2Match),
+          boxes,
+          pricePerBox: price,
+          subtotal: (price * boxes) || 0
+        });
+      }
+    }
+
+    return items;
   };
 
   const handleSend = async (overrideText?: string) => {
@@ -138,171 +218,117 @@ export default function ChatPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
+          userName: ranUser?.displayName || '',
+          userRole: ranUser?.role || 'cliente',
         }),
       });
       const data = await res.json();
-
       if (data.error) throw new Error(data.error);
 
-      const assistantMsg: ChatMessage = {
-        role: 'assistant',
-        content: data.message,
-        timestamp: new Date(),
-      };
+      const assistantMsg: ChatMessage = { role: 'assistant', content: data.message, timestamp: new Date() };
       setMessages((prev) => [...prev, assistantMsg]);
 
-      // Check if response contains a quote
-      const quote = detectQuoteInResponse(data.message);
-      if (quote) setDetectedQuote(quote);
+      const items = detectQuotesInResponse(data.message);
+      if (items.length > 0) setDetectedItems(items);
 
-      // Detect if AI is asking for contact info (acceptance signal)
       const lower = data.message.toLowerCase();
-      if (
-        lower.includes('nombre') &&
-        (lower.includes('email') || lower.includes('teléfono')) &&
-        !quoteAcceptedPhase
-      ) {
+      if ((lower.includes('nombre') || lower.includes('email') || lower.includes('teléfono') || lower.includes('whatsapp')) && !quoteAcceptedPhase) {
         setQuoteAcceptedPhase(true);
       }
     } catch (err) {
-      toast.error('Error al conectar con la IA. Intentá de nuevo.');
+      toast.error('Error de conexión');
     } finally {
       setLoading(false);
       inputRef.current?.focus();
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  const totals = useMemo(() => detectedItems.reduce((acc, item) => acc + item.subtotal, 0), [detectedItems]);
 
   const handleAcceptQuote = async () => {
-    if (!contactForm.name || !contactForm.email || !contactForm.phone) {
-      toast.error('Completá todos los campos de contacto');
+    if (!contactForm.name || (!contactForm.email && !contactForm.phone)) {
+      toast.error('Por favor, indicá tu nombre y al menos un medio de contacto (Teléfono o Email).');
       return;
     }
     setSubmitting(true);
     try {
-      const vendorId = await assignRandomVendor();
-      await createQuote({
-        clientId: ranUser?.uid,
-        clientName: contactForm.name,
-        clientEmail: contactForm.email,
-        clientPhone: contactForm.phone,
-        items: detectedQuote ? [detectedQuote] : [],
-        totalMaterials: detectedQuote?.subtotal ?? 0,
-        grandTotal: detectedQuote?.subtotal ?? 0,
-        status: 'sent',
-        assignedVendorId: vendorId ?? undefined,
-        aiConversationLog: messages,
+      const res = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: ranUser?.uid,
+          clientName: contactForm.name,
+          clientEmail: contactForm.email,
+          clientPhone: contactForm.phone,
+          items: detectedItems,
+          totalMaterials: totals,
+          aiConversationLog: messages.map(m => ({ role: m.role, content: m.content })),
+        }),
       });
+      if (!res.ok) throw new Error();
       setQuoteDone(true);
-      toast.success('¡Presupuesto enviado! Un vendedor te va a contactar pronto.');
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: `¡Perfecto, ${contactForm.name}! 🎉 Tu presupuesto fue enviado correctamente. Un vendedor de RAN te va a contactar pronto al email **${contactForm.email}** o al teléfono **${contactForm.phone}**.\n\n¡Gracias por elegirnos!`,
-          timestamp: new Date(),
-        },
-      ]);
+      toast.success('¡Presupuesto enviado!');
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `¡Listo, ${contactForm.name}! 🎉 Hemos enviado tu solicitud a nuestro equipo. Un vendedor experto te contactará en breve al **${contactForm.phone}**.\n\n¡Muchas gracias por confiar en RAN!`,
+        timestamp: new Date()
+      }]);
       setQuoteAcceptedPhase(false);
     } catch {
-      toast.error('Error al enviar el presupuesto. Intentá de nuevo.');
+      toast.error('Error al enviar');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const SUGGESTIONS = [
-    '¿Qué pisos me recomendás para living?',
-    'Tengo baño de 6 m², ¿cuántas cajas necesito?',
-    '¿Cuál es la diferencia entre brillante y mate?',
-    'Quiero presupuesto para pisos de 30 m²',
-  ];
-
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-slate-50">
       {/* Header */}
-      <div className="bg-[#1B2A4A] py-6 border-b border-white/10">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl ran-gradient flex items-center justify-center shadow-lg">
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
+      <div className="bg-[#1B2A4A] py-6 shadow-md z-10">
+        <div className="container mx-auto px-4 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl ran-gradient flex items-center justify-center shadow-lg"><Sparkles className="h-6 w-6 text-white" /></div>
             <div>
-              <h1 className="text-xl font-black text-white flex items-center gap-2">
-                RANI
-                <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-400 inline-block mr-1" />
-                  En línea
-                </Badge>
-              </h1>
-              <p className="text-white/60 text-sm">Asistente de RAN Pisos & Revestimientos</p>
+              <h1 className="text-xl font-black text-white flex items-center gap-2">RANI <Badge className="bg-green-500/20 text-green-400">Online</Badge></h1>
+              <p className="text-white/50 text-xs">Asistente Inteligente de RAN</p>
             </div>
           </div>
+          <Button variant="ghost" className="text-white/60 hover:text-white" onClick={() => window.location.href = '/'}>Salir</Button>
         </div>
       </div>
 
-      {/* Chat area */}
-      <div className="flex-1 container mx-auto px-4 py-6 max-w-3xl overflow-y-auto">
-        <div className="space-y-4">
+      <div ref={containerRef} className="flex-1 container mx-auto px-4 py-8 max-w-4xl overflow-y-auto">
+        <div className="space-y-8">
           {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex gap-3 animate-fade-in-up ${
-                msg.role === 'user' ? 'flex-row-reverse' : ''
-              }`}
-            >
-              {/* Avatar */}
-              <div
-                className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${
-                  msg.role === 'assistant'
-                    ? 'ran-gradient shadow-md'
-                    : 'bg-[#3B82C4]/20 border border-[#3B82C4]/30'
-                }`}
-              >
-                {msg.role === 'assistant' ? (
-                  <Bot className="h-4 w-4 text-white" />
-                ) : (
-                  <User className="h-4 w-4 text-[#3B82C4]" />
-                )}
+            <div key={i} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''} animate-fade-in`}>
+              <div className={`h-10 w-10 shrink-0 rounded-2xl flex items-center justify-center ${msg.role === 'assistant' ? 'ran-gradient text-white shadow-lg' : 'bg-white border text-slate-400'}`}>
+                {msg.role === 'assistant' ? <Bot className="h-6 w-6" /> : <User className="h-6 w-6" />}
               </div>
-
-              {/* Bubble */}
-              <div
-                className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                  msg.role === 'assistant'
-                    ? 'bg-card border border-border rounded-tl-sm'
-                    : 'ran-gradient text-white rounded-tr-sm'
-                }`}
-              >
+              <div className={`max-w-[80%] p-5 rounded-[28px] shadow-sm ${msg.role === 'assistant' ? 'bg-white assistant-bubble border border-slate-100' : 'bg-[#1B2A4A] text-white rounded-tr-none'}`}>
                 {msg.role === 'assistant' ? (
-                  <MarkdownMessage content={msg.content.replace(/PRESUPUESTO_GENERADO:[\s\S]*TOTAL_MATERIALES:[^\n]*/g, '[Presupuesto generado ✓]')} />
-                ) : (
-                  <p className="text-sm text-white leading-relaxed">{msg.content}</p>
-                )}
+                  <MarkdownMessage content={msg.content.replace(/PRESUPUESTO_GENERADO:[\s\S]*TOTAL_MATERIALES:[^\n]*/g, '[Cálculo realizado ✓]')} />
+                ) : <p className="text-[15px]">{msg.content}</p>}
 
-                {/* Show detected quote card */}
-                {msg.role === 'assistant' && msg.content.includes('PRESUPUESTO_GENERADO:') && detectedQuote && (
-                  <div className="mt-3 rounded-xl overflow-hidden border border-[#3B82C4]/30">
-                    <div className="ran-gradient px-4 py-2">
-                      <p className="text-white text-xs font-bold uppercase tracking-wider">Presupuesto</p>
+                {/* Detected Items Card */}
+                {msg.role === 'assistant' && msg.content.includes('PRESUPUESTO_GENERADO:') && detectedItems.length > 0 && (
+                  <div className="mt-6 border border-slate-100 rounded-3xl overflow-hidden shadow-xl bg-slate-50/50">
+                    <div className="bg-[#1B2A4A] p-4 flex items-center gap-2">
+                      <Package className="h-4 w-4 text-blue-400" />
+                      <p className="text-white font-black text-[10px] uppercase tracking-widest">Resumen de Materiales</p>
                     </div>
-                    <div className="bg-background px-4 py-3 space-y-1">
-                      <p className="font-semibold text-sm">{detectedQuote.name}</p>
-                      <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-                        <span>m²: <strong className="text-foreground">{detectedQuote.m2}</strong></span>
-                        <span>Cajas: <strong className="text-foreground">{detectedQuote.boxes}</strong></span>
-                        <span>Precio/caja: <strong className="text-foreground">{formatARS(detectedQuote.pricePerBox)}</strong></span>
-                        <span>Subtotal: <strong className="text-foreground">{formatARS(detectedQuote.subtotal)}</strong></span>
-                      </div>
-                      <div className="pt-2">
-                        <p className="font-black text-lg">{formatARS(detectedQuote.subtotal)}</p>
-                        <p className="text-xs text-muted-foreground">Total materiales (IVA incluido)</p>
+                    <div className="p-5 space-y-4">
+                      {detectedItems.map((it, idx) => (
+                        <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
+                          <div>
+                            <p className="font-black text-slate-800 text-sm leading-none mb-1">{it.name}</p>
+                            <p className="text-[10px] text-slate-400 font-bold">{it.m2} m² • {it.boxes} cajas</p>
+                          </div>
+                          <p className="font-black text-[#1B2A4A]">{it.subtotal > 0 ? formatARS(it.subtotal) : 'A COTIZAR'}</p>
+                        </div>
+                      ))}
+                      <div className="pt-4 border-t border-dashed flex justify-between items-end">
+                        <p className="text-[10px] text-slate-400 font-black uppercase">Total Estimado</p>
+                        <p className="text-2xl font-black text-[#3B82C4]">{totals > 0 ? formatARS(totals) : 'A COTIZAR'}</p>
                       </div>
                     </div>
                   </div>
@@ -312,124 +338,58 @@ export default function ChatPage() {
           ))}
 
           {loading && (
-            <div className="flex gap-3">
-              <div className="h-8 w-8 shrink-0 rounded-full ran-gradient flex items-center justify-center shadow-md">
-                <Bot className="h-4 w-4 text-white" />
-              </div>
-              <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3">
-                <div className="flex gap-1.5 items-center h-5">
-                  {[0, 1, 2].map((i) => (
-                    <div
-                      key={i}
-                      className="h-2 w-2 rounded-full bg-[#3B82C4] animate-bounce"
-                      style={{ animationDelay: `${i * 0.15}s` }}
-                    />
-                  ))}
-                </div>
-              </div>
+            <div className="flex gap-4 items-center">
+              <div className="h-10 w-10 ran-gradient rounded-2xl flex items-center justify-center animate-pulse"><Bot className="h-6 w-6 text-white" /></div>
+              <div className="bg-white px-4 py-3 rounded-2xl italic text-slate-400 text-sm">RANI está analizando tu solicitud...</div>
             </div>
           )}
 
-          {/* Contact form after quote acceptance */}
           {quoteAcceptedPhase && !quoteDone && (
-            <div className="rounded-2xl border border-[#3B82C4]/30 bg-card overflow-hidden animate-fade-in-up">
-              <div className="ran-gradient px-4 py-3">
-                <h3 className="text-white font-bold flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Confirmar presupuesto
-                </h3>
+            <div className="bg-white rounded-[32px] border-2 border-[#3B82C4] shadow-2xl p-8 max-w-lg mx-auto animate-fade-in-up">
+              <div className="text-center space-y-2 mb-8">
+                <div className="h-14 w-14 bg-blue-50 text-[#3B82C4] rounded-2xl flex items-center justify-center mx-auto mb-4"><CheckCircle2 className="h-8 w-8" /></div>
+                <h3 className="text-2xl font-black text-slate-800">Casi listo...</h3>
+                <p className="text-slate-500 text-sm">Necesitamos unos datos mínimos para que un vendedor pueda enviarte el presupuesto formal.</p>
               </div>
-              <div className="p-4 space-y-3">
-                <p className="text-sm text-muted-foreground">Completá tus datos y un vendedor te contactará para confirmar el pedido.</p>
-                <div className="grid grid-cols-1 gap-3">
-                  <Input
-                    placeholder="Tu nombre completo"
-                    value={contactForm.name}
-                    onChange={(e) => setContactForm((f) => ({ ...f, name: e.target.value }))}
-                    className="text-sm"
-                    id="contact-name"
-                  />
-                  <Input
-                    type="email"
-                    placeholder="Tu email"
-                    value={contactForm.email}
-                    onChange={(e) => setContactForm((f) => ({ ...f, email: e.target.value }))}
-                    className="text-sm"
-                    id="contact-email"
-                  />
-                  <Input
-                    type="tel"
-                    placeholder="Teléfono / WhatsApp"
-                    value={contactForm.phone}
-                    onChange={(e) => setContactForm((f) => ({ ...f, phone: e.target.value }))}
-                    className="text-sm"
-                    id="contact-phone"
-                  />
-                </div>
-                <Button
-                  className="w-full ran-gradient text-white border-0 hover:opacity-90 font-semibold"
-                  onClick={handleAcceptQuote}
-                  disabled={submitting}
-                  id="btn-accept-quote"
-                >
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-                  {submitting ? 'Enviando...' : 'Confirmar y enviar presupuesto'}
+              <div className="space-y-4">
+                <Input placeholder="Nombre Completo" className="h-14 rounded-2xl border-slate-200 text-lg" value={contactForm.name} onChange={e => setContactForm(f => ({...f, name: e.target.value}))} />
+                <Input placeholder="Email (opcional)" className="h-14 rounded-2xl border-slate-200 text-lg" value={contactForm.email} onChange={e => setContactForm(f => ({...f, email: e.target.value}))} />
+                <Input placeholder="WhatsApp / Teléfono" className="h-14 rounded-2xl border-slate-200 text-lg font-bold" value={contactForm.phone} onChange={e => setContactForm(f => ({...f, phone: e.target.value}))} />
+                <Button className="w-full h-16 ran-gradient text-white font-black text-xl rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all" onClick={handleAcceptQuote} disabled={submitting}>
+                  {submitting ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2" />}
+                  ENVIAR MI PRESUPUESTO
                 </Button>
               </div>
             </div>
           )}
-
-          <div ref={bottomRef} />
+          <div ref={bottomRef} className="h-10" />
         </div>
       </div>
 
-      {/* Quick suggestions (only at start) */}
-      {messages.length === 1 && (
-        <div className="container mx-auto px-4 pb-3 max-w-3xl">
-          <div className="flex flex-wrap gap-2">
-            {SUGGESTIONS.map((s) => (
-              <button
-                key={s}
-                onClick={() => handleSend(s)}
-                className="px-3 py-1.5 rounded-full text-xs border border-[#3B82C4]/30 text-[#3B82C4] hover:bg-[#3B82C4]/10 transition-colors"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Input area */}
-      <div className="border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
-        <div className="container mx-auto px-4 py-4 max-w-3xl">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Input
-                ref={inputRef}
-                placeholder="Escribí tu consulta..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={loading || quoteDone}
-                className="pr-12 h-12 rounded-xl border-[#3B82C4]/20 focus:border-[#3B82C4] text-sm"
-                id="chat-input"
-                autoComplete="off"
-              />
-              <Button
-                onClick={() => handleSend()}
-                disabled={loading || !input.trim() || quoteDone}
-                size="icon"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 w-9 ran-gradient text-white border-0 hover:opacity-90 shadow"
-                id="btn-send-chat"
-              >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              </Button>
+      <div className="bg-white/80 backdrop-blur-md border-t p-6 sticky bottom-0">
+        <div className="container mx-auto max-w-3xl flex flex-col gap-3">
+          {detectedItems.length > 0 && !quoteDone && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-full w-fit mb-1 border border-blue-100 animate-pulse">
+              <Package className="h-4 w-4" />
+              <span className="text-[10px] uppercase font-black tracking-widest">
+                {detectedItems.length} materiales detectados para tu presupuesto
+              </span>
             </div>
+          )}
+          <div className="flex gap-3">
+            <Input 
+              ref={inputRef}
+              placeholder="Escribí tu consulta aquí..."
+              className="h-16 rounded-3xl border-slate-200 px-6 text-lg focus:ring-2 focus:ring-[#3B82C4] transition-all"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSend()}
+              disabled={loading || quoteDone}
+            />
+            <Button onClick={() => handleSend()} disabled={loading || !input.trim() || quoteDone} className="h-16 w-16 rounded-3xl ran-gradient text-white border-0 shadow-lg active:scale-95 transition-all">
+              {loading ? <Loader2 className="animate-spin" /> : <Send />}
+            </Button>
           </div>
-          <p className="text-center text-xs text-muted-foreground mt-2">
-            RANI calcula materiales • No incluye mano de obra
-          </p>
         </div>
       </div>
     </div>

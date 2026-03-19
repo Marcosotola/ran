@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
-import { db } from './config';
+import { db, auth } from './config';
 import { Subscription, ContactInfo } from '@/lib/types';
 
 const SETTINGS_DOC = 'settings/app';
@@ -31,12 +31,16 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 export async function getAppSettings(): Promise<AppSettings> {
-  const snap = await getDoc(doc(db, SETTINGS_DOC));
-  if (!snap.exists()) {
-    await setDoc(doc(db, SETTINGS_DOC), DEFAULT_SETTINGS);
+  try {
+    const snap = await getDoc(doc(db, SETTINGS_DOC));
+    if (!snap.exists()) {
+      return DEFAULT_SETTINGS;
+    }
+    return snap.data() as AppSettings;
+  } catch (error) {
+    console.warn("Error getting app settings, using defaults:", error);
     return DEFAULT_SETTINGS;
   }
-  return snap.data() as AppSettings;
 }
 
 export async function updateAppSettings(settings: Partial<AppSettings>) {
@@ -79,6 +83,11 @@ export function subscribeToSettings(callback: (settings: AppSettings) => void) {
       }
     },
     (error) => {
+      // Suppress error if it's a permission issue during logout/guest session
+      if (error.code === 'permission-denied' && !auth.currentUser) {
+        callback(DEFAULT_SETTINGS);
+        return;
+      }
       console.error("Error subscribing to settings:", error);
       callback(DEFAULT_SETTINGS);
     }

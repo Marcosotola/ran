@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/lib/firebase/auth-context';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { RANUser, UserRole } from '@/lib/types';
@@ -16,7 +17,29 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils/calculations';
-import { Search, Users, Shield, Loader2 } from 'lucide-react';
+import { Search, Users, Shield, Loader2, Trash2, Edit, Save } from 'lucide-react';
+import { updateUser, deleteUser } from '@/lib/firebase/users';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 const ROLES: UserRole[] = ['cliente', 'vendedor', 'secretaria', 'contenido', 'finanzas', 'admin'];
 
@@ -47,8 +70,14 @@ export default function UsuariosAdminPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<RANUser | null>(null);
+  const [newDisplayName, setNewDisplayName] = useState('');
+
+  const { ranUser, loading: authLoading } = useAuth();
 
   useEffect(() => {
+    if (authLoading || !ranUser || ranUser.role !== 'admin') return;
+
     getDocs(collection(db, 'users'))
       .then((snap) => {
         const data = snap.docs.map((d) => ({ uid: d.id, ...d.data() })) as RANUser[];
@@ -56,7 +85,7 @@ export default function UsuariosAdminPage() {
         setFiltered(data);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [ranUser, authLoading]);
 
   useEffect(() => {
     let result = [...users];
@@ -87,11 +116,41 @@ export default function UsuariosAdminPage() {
 
   const toggleActive = async (uid: string, current: boolean) => {
     try {
-      await updateDoc(doc(db, 'users', uid), { isActive: !current });
+      await updateUser(uid, { isActive: !current });
       setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, isActive: !current } : u)));
       toast.success(!current ? 'Usuario activado' : 'Usuario desactivado');
     } catch {
       toast.error('Error al actualizar usuario');
+    }
+  };
+
+  const handleDelete = async (uid: string) => {
+    try {
+      await deleteUser(uid);
+      setUsers((prev) => prev.filter((u) => u.uid !== uid));
+      toast.success('Usuario eliminado');
+    } catch {
+      toast.error('Error al eliminar usuario');
+    }
+  };
+
+  const handleEdit = (user: RANUser) => {
+    setEditingUser(user);
+    setNewDisplayName(user.displayName);
+  };
+
+  const saveEdit = async () => {
+    if (!editingUser) return;
+    setUpdatingId(editingUser.uid);
+    try {
+      await updateUser(editingUser.uid, { displayName: newDisplayName });
+      setUsers((prev) => prev.map((u) => (u.uid === editingUser.uid ? { ...u, displayName: newDisplayName } : u)));
+      toast.success('Nombre actualizado');
+      setEditingUser(null);
+    } catch {
+      toast.error('Error al guardar cambios');
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -155,6 +214,7 @@ export default function UsuariosAdminPage() {
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell">Registrado</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Rol</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Estado</th>
+                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -197,17 +257,88 @@ export default function UsuariosAdminPage() {
                       onClick={() => toggleActive(user.uid, user.isActive ?? true)}
                       className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
                         user.isActive === false
-                          ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                          : 'bg-green-100 text-green-700 hover:bg-green-200'
+                           ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                           : 'bg-green-100 text-green-700 hover:bg-green-200'
                       }`}
                     >
                       {user.isActive === false ? 'Inactivo' : 'Activo'}
                     </button>
                   </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50" onClick={() => handleEdit(user)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:bg-red-50">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción eliminará el registro de <strong>{user.displayName}</strong> ({user.email}). 
+                              No se borrará la cuenta de autenticación de Firebase (debe hacerse desde la consola), 
+                              pero ya no aparecerá en el sistema.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(user.uid)} className="bg-red-600 hover:bg-red-700 text-white">
+                              Eliminar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+          {/* Edit Dialog */}
+          <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Editar Usuario</DialogTitle>
+                <DialogDescription>
+                  Cambia la información del usuario. Email no es editable por seguridad.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Nombre visible</Label>
+                  <Input
+                    id="name"
+                    value={newDisplayName}
+                    onChange={(e) => setNewDisplayName(e.target.value)}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Email</Label>
+                  <Input
+                    value={editingUser?.email}
+                    disabled
+                    className="col-span-3 bg-muted"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditingUser(null)}>
+                  Cancelar
+                </Button>
+                <Button onClick={saveEdit} disabled={updatingId === editingUser?.uid} className="ran-gradient text-white border-0">
+                  {updatingId === editingUser?.uid ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                  Guardar cambios
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           {filtered.length === 0 && (
             <div className="py-12 text-center text-muted-foreground">
               <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { getProduct } from '@/lib/firebase/products';
 import { Product } from '@/lib/types';
 import { calcBoxes, formatARS } from '@/lib/utils/calculations';
+import { useAuth, hasRole } from '@/lib/firebase/auth-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,8 @@ import {
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { role } = useAuth();
+  const canSeePrices = hasRole(role, ['vendedor', 'finanzas']);
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -162,9 +165,13 @@ export default function ProductDetailPage() {
                   {product.category === 'pisos' ? 'Piso' : 'Pared'}
                 </Badge>
                 <Badge variant="outline">{product.finish}</Badge>
-                {product.stock === 0 && <Badge variant="destructive">Sin stock</Badge>}
-                {product.stock > 0 && product.stock < 10 && (
-                  <Badge variant="destructive" className="bg-amber-500">Pocas cajas</Badge>
+                {canSeePrices && (
+                  <>
+                    {product.stock === 0 && <Badge variant="destructive">Sin stock</Badge>}
+                    {product.stock > 0 && product.stock < 10 && (
+                      <Badge variant="destructive" className="bg-amber-500">Pocas cajas</Badge>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -172,21 +179,24 @@ export default function ProductDetailPage() {
               <p className="text-muted-foreground leading-relaxed">{product.description}</p>
             </div>
 
-            <Separator />
-
-            {/* Price */}
-            <div className="space-y-1">
-              <div className="flex items-end gap-3">
-                <span className="text-4xl font-black text-[#1B2A4A] dark:text-white">
-                  {formatARS(product.pricePerM2)}
-                </span>
-                <span className="text-muted-foreground pb-1">/m²</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Precio por caja ({product.m2PerBox} m²):{' '}
-                <strong className="text-foreground">{formatARS(product.pricePerBox)}</strong>
-              </p>
-            </div>
+            {canSeePrices && (
+              <>
+                <Separator />
+                {/* Price */}
+                <div className="space-y-1">
+                  <div className="flex items-end gap-3">
+                    <span className="text-4xl font-black text-[#1B2A4A] dark:text-white">
+                      {formatARS(product.pricePerM2)}
+                    </span>
+                    <span className="text-muted-foreground pb-1">/m²</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Precio por caja ({product.m2PerBox} m²):{' '}
+                    <strong className="text-foreground">{formatARS(product.pricePerBox)}</strong>
+                  </p>
+                </div>
+              </>
+            )}
 
             <Separator />
 
@@ -219,12 +229,14 @@ export default function ProductDetailPage() {
                     <dd className="font-semibold">{product.weight} kg</dd>
                   </div>
                 )}
-                <div>
-                  <dt className="text-muted-foreground">Stock</dt>
-                  <dd className="font-semibold">
-                    {product.stock > 0 ? `${product.stock} cajas` : 'Sin stock'}
-                  </dd>
-                </div>
+                {canSeePrices && (
+                  <div>
+                    <dt className="text-muted-foreground">Stock</dt>
+                    <dd className="font-semibold">
+                      {product.stock > 0 ? `${product.stock} cajas` : 'Sin stock'}
+                    </dd>
+                  </div>
+                )}
               </dl>
             </div>
 
@@ -258,10 +270,12 @@ export default function ProductDetailPage() {
                     <span className="opacity-80">Cajas necesarias</span>
                     <strong>{calcResult.boxes} cajas</strong>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="opacity-80">Total estimado</span>
-                    <strong>{formatARS(calcResult.subtotal)}</strong>
-                  </div>
+                  {canSeePrices && (
+                    <div className="flex justify-between text-sm">
+                      <span className="opacity-80">Total estimado</span>
+                      <strong>{formatARS(calcResult.subtotal)}</strong>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

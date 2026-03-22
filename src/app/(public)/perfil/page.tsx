@@ -28,7 +28,7 @@ import { updateProfile, updatePassword } from 'firebase/auth';
 import { requestNotificationPermission } from '@/lib/firebase/messaging-utils';
 
 export default function MiPerfilPage() {
-  const { ranUser, logout } = useAuth();
+  const { ranUser, user, logOut } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   
@@ -52,14 +52,13 @@ export default function MiPerfilPage() {
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ranUser?.uid) return;
+    if (!ranUser?.uid || !user) return;
     
     setSaving(true);
     try {
       // 1. Actualizar Firebase Auth si cambió el nombre
       if (displayName !== ranUser.displayName) {
-        // @ts-ignore
-        await updateProfile(ranUser.auth, { displayName });
+        await updateProfile(user, { displayName });
       }
 
       // 2. Actualizar Firestore
@@ -71,8 +70,7 @@ export default function MiPerfilPage() {
       // 3. Password si se cargó una nueva
       if (newPassword) {
         if (newPassword.length < 6) throw new Error('Password muy corta (min 6)');
-        // @ts-ignore
-        await updatePassword(ranUser.auth, newPassword);
+        await updatePassword(user, newPassword);
         setNewPassword('');
       }
 
@@ -148,7 +146,7 @@ export default function MiPerfilPage() {
             </div>
           </div>
 
-          <Button variant="ghost" className="text-red-400 hover:text-red-600 hover:bg-red-50 gap-2 rounded-2xl" onClick={logout}>
+          <Button variant="ghost" className="text-red-400 hover:text-red-600 hover:bg-red-50 gap-2 rounded-2xl" onClick={logOut}>
             <LogOut className="h-4 w-4" /> Salir
           </Button>
         </div>

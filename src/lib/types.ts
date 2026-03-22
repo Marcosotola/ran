@@ -19,6 +19,8 @@ export interface RANUser {
   phone?: string;
   createdAt: Date;
   isActive: boolean;
+  fcmToken?: string;
+  notificationsEnabled?: boolean;
 }
 
 // ----- Products -----

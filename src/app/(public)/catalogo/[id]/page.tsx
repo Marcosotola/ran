@@ -256,11 +256,12 @@ export default function ProductDetailPage() {
                     id="m2-input"
                     type="number"
                     placeholder="Ej: 12.5"
-                    value={m2}
+                    value={m2 || ''}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => setM2(e.target.value)}
                     min="0"
                     step="0.5"
-                    className="text-sm"
+                    className="text-sm transition-all focus:ring-2 focus:ring-[#3B82C4]"
                   />
                 </div>
               </div>

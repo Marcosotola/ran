@@ -245,7 +245,7 @@ function EditSaleModal({ sale, onRefresh }: { sale: Sale, onRefresh: () => void 
           <Edit2 className="h-6 w-6" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="fixed inset-0 z-50 w-screen h-screen max-w-none sm:max-w-none m-0 rounded-none p-0 overflow-y-auto border-0 translate-x-0 translate-y-0 flex flex-col bg-white">
+      <DialogContent className="fixed inset-0 z-50 w-screen h-[100dvh] max-w-none sm:max-w-none m-0 rounded-none p-0 overflow-y-auto border-0 translate-x-0 translate-y-0 flex flex-col bg-white">
         <div className="bg-white border-b p-6 sticky top-0 z-10 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="rounded-full"><ChevronLeft className="h-6 w-6" /></Button>
@@ -258,7 +258,7 @@ function EditSaleModal({ sale, onRefresh }: { sale: Sale, onRefresh: () => void 
         </div>
 
         <div className="flex-1 p-10 bg-slate-50/50">
-          <div className="max-w-5xl mx-auto space-y-10">
+          <div className="max-w-5xl mx-auto pb-40 space-y-10">
             <div className="bg-white p-6 rounded-3xl border shadow-sm">
               <Label className="text-[10px] uppercase font-black tracking-widest text-[#3B82C4] block mb-2">Vendedor</Label>
               <Input 
@@ -315,10 +315,22 @@ function EditSaleModal({ sale, onRefresh }: { sale: Sale, onRefresh: () => void 
                         <Input value={it.name} onChange={e => handleUpdateItem(idx, { name: e.target.value })} className="h-12 border-0 bg-transparent focus:bg-white font-black text-lg text-slate-800" />
                       </td>
                       <td className="px-5 py-5">
-                        <Input type="number" value={it.boxes} onChange={e => handleUpdateItem(idx, { boxes: parseInt(e.target.value) || 0 })} className="h-12 border-0 bg-transparent focus:bg-white text-center font-black text-slate-800 text-xl" />
+                        <Input 
+                          type="number" 
+                          value={it.boxes || ''} 
+                          onFocus={(e) => e.target.select()}
+                          onChange={e => handleUpdateItem(idx, { boxes: parseInt(e.target.value) || 0 })} 
+                          className="h-12 border-0 bg-transparent focus:bg-white text-center font-black text-slate-800 text-xl transition-all" 
+                        />
                       </td>
                       <td className="px-5 py-5">
-                        <Input type="number" value={it.pricePerBox} onChange={e => handleUpdateItem(idx, { pricePerBox: parseFloat(e.target.value) || 0 })} className="h-12 border-0 bg-transparent focus:bg-white text-right font-bold text-slate-700" />
+                        <Input 
+                          type="number" 
+                          value={it.pricePerBox || ''} 
+                          onFocus={(e) => e.target.select()}
+                          onChange={e => handleUpdateItem(idx, { pricePerBox: parseFloat(e.target.value) || 0 })} 
+                          className="h-12 border-0 bg-transparent focus:bg-white text-right font-bold text-slate-700 transition-all" 
+                        />
                       </td>
                       <td className="px-10 py-5 text-right font-black text-2xl text-slate-900">{formatARS(it.subtotal)}</td>
                       <td className="px-6 py-5">
@@ -333,7 +345,13 @@ function EditSaleModal({ sale, onRefresh }: { sale: Sale, onRefresh: () => void 
                 <div className="flex flex-col md:flex-row gap-8 items-center">
                   <div className="space-y-1">
                     <p className="text-[10px] font-black uppercase text-white/30 tracking-widest leading-none">Costo de Flete</p>
-                    <Input type="number" value={shipping} onChange={e => setShipping(parseFloat(e.target.value) || 0)} className="bg-transparent border-0 h-10 p-0 text-3xl font-black text-blue-400 w-32 focus:ring-0" />
+                    <Input 
+                      type="number" 
+                      value={shipping || ''} 
+                      onFocus={(e) => e.target.select()}
+                      onChange={e => setShipping(parseFloat(e.target.value) || 0)} 
+                      className="bg-transparent border-0 h-10 p-0 text-3xl font-black text-blue-400 w-32 focus:ring-0 transition-all" 
+                    />
                   </div>
                   <div className="w-px h-12 bg-white/10 hidden md:block" />
                   <div className="space-y-1">
@@ -421,7 +439,7 @@ function CreateSaleModal({ onRefresh }: { onRefresh: () => void }) {
           <Plus className="h-6 w-6 font-black" /> REGISTRAR VENTA
         </Button>
       </DialogTrigger>
-      <DialogContent className="fixed inset-0 z-50 w-screen h-screen max-w-none sm:max-w-none m-0 rounded-none p-0 overflow-y-auto border-0 translate-x-0 translate-y-0 flex flex-col bg-white">
+      <DialogContent className="fixed inset-0 z-50 w-screen h-[100dvh] max-w-none sm:max-w-none m-0 rounded-none p-0 overflow-y-auto border-0 translate-x-0 translate-y-0 flex flex-col bg-white">
         <div className="bg-white border-b p-6 sticky top-0 z-10 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="rounded-full"><ChevronLeft className="h-6 w-6" /></Button>
@@ -434,7 +452,7 @@ function CreateSaleModal({ onRefresh }: { onRefresh: () => void }) {
         </div>
 
         <div className="flex-1 p-10 bg-slate-50/50">
-          <div className="max-w-5xl mx-auto space-y-10">
+          <div className="max-w-5xl mx-auto pb-40 space-y-10">
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="bg-white p-8 rounded-3xl border shadow-sm space-y-4">
@@ -499,13 +517,31 @@ function CreateSaleModal({ onRefresh }: { onRefresh: () => void }) {
                           <Input value={it.name} onChange={e => handleUpdateItem(idx, { name: e.target.value })} className="h-12 border-0 bg-transparent focus:bg-white font-black text-lg text-slate-800" />
                         </td>
                         <td className="px-5 py-5">
-                          <Input type="number" value={it.m2} onChange={e => handleUpdateItem(idx, { m2: parseFloat(e.target.value) || 0 })} className="h-12 border-0 bg-transparent focus:bg-white text-center font-bold text-slate-600" />
+                          <Input 
+                            type="number" 
+                            value={it.m2 || ''} 
+                            onFocus={(e) => e.target.select()}
+                            onChange={e => handleUpdateItem(idx, { m2: parseFloat(e.target.value) || 0 })} 
+                            className="h-12 border-0 bg-transparent focus:bg-white text-center font-bold text-slate-600 transition-all" 
+                          />
                         </td>
                         <td className="px-5 py-5">
-                          <Input type="number" value={it.boxes} onChange={e => handleUpdateItem(idx, { boxes: parseInt(e.target.value) || 0 })} className="h-12 border-0 bg-transparent focus:bg-white text-center font-black text-slate-800 text-xl" />
+                          <Input 
+                            type="number" 
+                            value={it.boxes || ''} 
+                            onFocus={(e) => e.target.select()}
+                            onChange={e => handleUpdateItem(idx, { boxes: parseInt(e.target.value) || 0 })} 
+                            className="h-12 border-0 bg-transparent focus:bg-white text-center font-black text-slate-800 text-xl transition-all" 
+                          />
                         </td>
                         <td className="px-5 py-5">
-                          <Input type="number" value={it.pricePerBox} onChange={e => handleUpdateItem(idx, { pricePerBox: parseFloat(e.target.value) || 0 })} className="h-12 border-0 bg-transparent focus:bg-white text-right font-bold text-slate-700" />
+                          <Input 
+                            type="number" 
+                            value={it.pricePerBox || ''} 
+                            onFocus={(e) => e.target.select()}
+                            onChange={e => handleUpdateItem(idx, { pricePerBox: parseFloat(e.target.value) || 0 })} 
+                            className="h-12 border-0 bg-transparent focus:bg-white text-right font-bold text-slate-700 transition-all" 
+                          />
                         </td>
                         <td className="px-10 py-5 text-right font-black text-2xl text-slate-900">{formatARS(it.subtotal)}</td>
                         <td className="px-6 py-5">
@@ -529,9 +565,10 @@ function CreateSaleModal({ onRefresh }: { onRefresh: () => void }) {
                     <span className="absolute left-0 top-1/2 -translate-y-1/2 text-white/20 font-black text-2xl">$</span>
                     <Input 
                       type="number" 
-                      value={shipping} 
+                      value={shipping || ''} 
+                      onFocus={(e) => e.target.select()}
                       onChange={e => setShipping(parseFloat(e.target.value) || 0)} 
-                      className="bg-transparent border-0 h-10 p-0 pl-6 text-3xl font-black text-blue-400 w-40 focus:ring-0" 
+                      className="bg-transparent border-0 h-10 p-0 pl-6 text-3xl font-black text-blue-400 w-40 focus:ring-0 transition-all" 
                     />
                   </div>
                 </div>

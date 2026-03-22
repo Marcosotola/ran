@@ -4,7 +4,8 @@ import { RoleGuard } from '@/components/auth/RoleGuard';
 import { useAuth } from '@/lib/firebase/auth-context';
 import { useEffect, useState, useMemo } from 'react';
 import { getQuotesByVendor, updateQuote, updateQuoteStatus, deleteQuote } from '@/lib/firebase/quotes';
-import { Quote, QuoteItem, QuoteStatus, PaymentMethod, Sale } from '@/lib/types';
+import { getAllUsers } from '@/lib/firebase/users';
+import { Quote, QuoteStatus, PaymentMethod, QuoteItem, RANUser } from '@/lib/types';
 import { formatARS, formatDate, formatQuoteNumber } from '@/lib/utils/calculations';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -30,9 +31,12 @@ import {
   ChevronLeft,
   Store,
   MessageCircle,
-  PackagePlus
+  PackagePlus,
+  Download
 } from 'lucide-react';
 import { convertQuoteToSale } from '@/lib/firebase/sales';
+import { getAppSettings, AppSettings } from '@/lib/firebase/settings';
+import { generateQuotePDF } from '@/lib/utils/pdf-generator';
 import {
   Dialog,
   DialogContent,
@@ -75,12 +79,15 @@ export default function VendedorPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
 
   const refreshQuotes = async () => {
     if (!ranUser?.uid) return;
     try {
       const q = await getQuotesByVendor(ranUser.uid);
       setQuotes(q);
+      const s = await getAppSettings();
+      setAppSettings(s);
     } catch {
       toast.error('Error al cargar presupuestos');
     } finally {
@@ -120,7 +127,7 @@ export default function VendedorPage() {
 
   return (
     <RoleGuard allowedRoles={['vendedor']}>
-      <div className="min-h-screen bg-[#F8FAFC]">
+      <div className="min-h-[100dvh] bg-[#F8FAFC]">
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
           
           {/* Header & KPIs */}
@@ -184,6 +191,7 @@ export default function VendedorPage() {
                     onContact={handleContact} 
                     onRefresh={refreshQuotes} 
                     vendorName={ranUser?.displayName || 'Vendedor'}
+                    appSettings={appSettings}
                   />
                 ))
               )}
@@ -195,11 +203,12 @@ export default function VendedorPage() {
   );
 }
 
-function QuoteListItem({ quote, onContact, onRefresh, vendorName }: { 
+function QuoteListItem({ quote, onContact, onRefresh, vendorName, appSettings }: { 
   quote: Quote, 
   onContact: (q: Quote, m: 'email' | 'whatsapp') => void, 
   onRefresh: () => void,
-  vendorName: string
+  vendorName: string,
+  appSettings: AppSettings | null
 }) {
   return (
     <div className="p-5 hover:bg-slate-50/50 transition-colors group">
@@ -227,16 +236,15 @@ function QuoteListItem({ quote, onContact, onRefresh, vendorName }: {
         {/* Actions */}
         <div className="flex items-center gap-3">
           {quote.clientPhone && (
-            <Button size="icon" variant="ghost" className="h-11 w-11 text-green-500 hover:text-green-600 hover:bg-green-50 rounded-xl" onClick={() => onContact(quote, 'whatsapp')}>
-              <MessageCircle className="h-5 w-5 fill-current opacity-20" />
-              <MessageCircle className="h-5 w-5 absolute" />
+            <Button variant="ghost" className="!h-16 !w-16 p-0 relative text-green-500 hover:text-green-600 hover:bg-green-50 rounded-2xl shrink-0" onClick={() => onContact(quote, 'whatsapp')}>
+              <MessageCircle className="h-10 w-10 fill-current opacity-20" />
+              <MessageCircle className="h-10 w-10 absolute" />
             </Button>
           )}
-          <QuoteDetailModal quote={quote} onRefresh={onRefresh} vendorName={vendorName} />
+          <QuoteDetailModal quote={quote} onRefresh={onRefresh} vendorName={vendorName} appSettings={appSettings} />
           <Button 
-            size="icon" 
             variant="ghost" 
-            className="h-11 w-11 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-xl"
+            className="!h-16 !w-16 p-0 relative text-red-300 hover:text-red-500 hover:bg-red-50 rounded-2xl shrink-0"
             onClick={async () => {
               if (window.confirm('¿ELIMINAR este presupuesto?')) {
                 try {
@@ -249,7 +257,7 @@ function QuoteListItem({ quote, onContact, onRefresh, vendorName }: {
               }
             }}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-10 w-10" />
           </Button>
         </div>
       </div>
@@ -257,7 +265,7 @@ function QuoteListItem({ quote, onContact, onRefresh, vendorName }: {
   );
 }
 
-function QuoteDetailModal({ quote, onRefresh, vendorName }: { quote: Quote, onRefresh: () => void, vendorName: string }) {
+function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings }: { quote: Quote, onRefresh: () => void, vendorName: string, appSettings: AppSettings | null }) {
   const [open, setOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -267,6 +275,8 @@ function QuoteDetailModal({ quote, onRefresh, vendorName }: { quote: Quote, onRe
   const [shipping, setShipping] = useState<number>(quote.shipping || 0);
   const [notes, setNotes] = useState<string>(quote.notes || '');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
+  const [assignedVendorId, setAssignedVendorId] = useState<string>(quote.assignedVendorId || '');
+  const [allVendors, setAllVendors] = useState<RANUser[]>([]);
 
   // Load items into state if changed or opened
   useEffect(() => {
@@ -274,7 +284,13 @@ function QuoteDetailModal({ quote, onRefresh, vendorName }: { quote: Quote, onRe
       setItems(quote.items || []);
       setShipping(quote.shipping || 0);
       setNotes(quote.notes || '');
+      setAssignedVendorId(quote.assignedVendorId || '');
       setEditMode(false);
+
+      // Fetch vendors
+      getAllUsers().then(users => {
+        setAllVendors(users.filter(u => u.role === 'vendedor' || u.role === 'admin' || u.role === 'dev'));
+      });
     }
   }, [open, quote]);
 
@@ -314,8 +330,9 @@ function QuoteDetailModal({ quote, onRefresh, vendorName }: { quote: Quote, onRe
         items, shipping, notes,
         totalMaterials: totals.materials,
         grandTotal: totals.grand,
+        assignedVendorId: assignedVendorId || undefined
       });
-      toast.success('Presupuesto actualizado');
+      toast.success('Cambios guardados');
       setEditMode(false);
       onRefresh();
     } catch {
@@ -363,7 +380,7 @@ function QuoteDetailModal({ quote, onRefresh, vendorName }: { quote: Quote, onRe
           <Eye className="h-4 w-4 mr-2" /> VER DETALLES
         </Button>
       </DialogTrigger>
-      <DialogContent className="fixed inset-0 z-50 w-screen h-screen max-w-none sm:max-w-none m-0 rounded-none p-0 overflow-y-auto border-0 translate-x-0 translate-y-0 flex flex-col bg-white">
+      <DialogContent className="fixed inset-0 z-50 w-screen h-[100dvh] max-w-none sm:max-w-none m-0 rounded-none p-0 overflow-y-auto border-0 translate-x-0 translate-y-0 flex flex-col bg-white">
         
         {/* Header - Light & Professional */}
         <div className="bg-white border-b border-slate-200 p-6 sticky top-0 z-10 flex items-center justify-between">
@@ -381,8 +398,8 @@ function QuoteDetailModal({ quote, onRefresh, vendorName }: { quote: Quote, onRe
           </div>
           
           <div className="flex items-center gap-3">
-            <Button variant="ghost" onClick={() => setOpen(false)} className="font-bold text-slate-500 hover:text-slate-900">
-              Cerrar (Esc)
+            <Button variant="ghost" onClick={() => setOpen(false)} className="font-black text-slate-500 hover:text-slate-900 group">
+              Cerrar <X className="h-5 w-5 ml-2 group-hover:rotate-90 transition-transform" />
             </Button>
             <div className="h-8 w-px bg-slate-200 mx-2" />
             <div className="text-right">
@@ -393,10 +410,37 @@ function QuoteDetailModal({ quote, onRefresh, vendorName }: { quote: Quote, onRe
         </div>
 
         <div className="flex-1 overflow-y-auto bg-slate-50/50">
-          <div className="max-w-7xl mx-auto p-8 space-y-10">
+          <div className="max-w-7xl mx-auto p-8 pb-40 space-y-10">
             
             {/* Contacts */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4 group hover:border-[#3B82C4] transition-colors col-span-1 md:col-span-1">
+                <div className="h-14 w-14 rounded-2xl bg-blue-50 flex items-center justify-center text-[#3B82C4] group-hover:scale-110 transition-transform">
+                  <User className="h-7 w-7" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Vendedor</p>
+                  {editMode ? (
+                    <Select value={assignedVendorId} onValueChange={setAssignedVendorId}>
+                      <SelectTrigger className="h-10 text-sm font-black rounded-xl bg-slate-50 border-transparent transition-all">
+                        <SelectValue placeholder="Asignar" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl border-slate-200 shadow-2xl">
+                        <SelectItem value="none" className="font-bold">Sin asignar</SelectItem>
+                        {allVendors.map(v => (
+                          <SelectItem key={v.uid} value={v.uid} className="font-bold">
+                            {v.displayName || v.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-black text-lg text-slate-800 italic">
+                      {allVendors.find(v => v.uid === assignedVendorId)?.displayName || 'Sin asignar'}
+                    </p>
+                  )}
+                </div>
+              </div>
               <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4 group hover:border-green-500 transition-colors">
                 <div className="h-14 w-14 rounded-2xl bg-green-50 flex items-center justify-center text-green-500 group-hover:scale-110 transition-transform">
                   <MessageCircle className="h-7 w-7" />
@@ -420,8 +464,8 @@ function QuoteDetailModal({ quote, onRefresh, vendorName }: { quote: Quote, onRe
                   <Store className="h-7 w-7" />
                 </div>
                 <div>
-                  <p className="font-black text-lg text-slate-800 italic">{vendorName}</p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Vendedor Responsable</p>
+                  <p className="font-black text-lg text-slate-800 italic">Vendedor Asignado</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Gestión de Cuenta</p>
                 </div>
               </div>
             </div>
@@ -433,18 +477,29 @@ function QuoteDetailModal({ quote, onRefresh, vendorName }: { quote: Quote, onRe
                   <div className="h-10 w-10 rounded-xl bg-slate-900 flex items-center justify-center text-white">
                     <FileText className="h-5 w-5" />
                   </div>
-                  <h4 className="font-black text-xl text-slate-900 tracking-tight">Detalle de Materiales</h4>
+                  <h4 className="font-black text-xl text-slate-900 tracking-tight">Desglose de Materiales</h4>
                 </div>
-                {!editMode && quote.status === 'sent' && (
-                  <Button variant="outline" className="rounded-xl border-2 font-black text-[#3B82C4] border-[#3B82C4]/20 hover:bg-[#3B82C4]/5" onClick={() => setEditMode(true)}>
-                    EDITAR PRESUPUESTO
-                  </Button>
-                )}
-                {editMode && (
-                  <Button variant="outline" className="rounded-xl border-2 border-dashed font-black text-green-600 border-green-200 hover:bg-green-50" onClick={handleAddItem}>
-                    <PackagePlus className="h-4 w-4 mr-2" /> AGREGAR ARTÍCULO
-                  </Button>
-                )}
+                <div className="flex gap-2">
+                  {appSettings && (
+                    <Button 
+                      variant="outline" 
+                      className="rounded-xl border-2 font-black text-slate-600 border-slate-200 hover:bg-slate-50 gap-2"
+                      onClick={() => generateQuotePDF(quote, appSettings)}
+                    >
+                      <Download className="h-4 w-4" /> DESCARGAR PDF
+                    </Button>
+                  )}
+                  {!editMode && quote.status === 'sent' && (
+                    <Button variant="outline" className="rounded-xl border-2 font-black text-[#3B82C4] border-[#3B82C4]/20 hover:bg-[#3B82C4]/5" onClick={() => setEditMode(true)}>
+                      EDITAR PRESUPUESTO
+                    </Button>
+                  )}
+                  {editMode && (
+                    <Button variant="outline" className="rounded-xl border-2 border-dashed font-black text-green-600 border-green-200 hover:bg-green-50" onClick={handleAddItem}>
+                      <PackagePlus className="h-4 w-4 mr-2" /> AÑADIR PRODUCTO
+                    </Button>
+                  )}
+                </div>
               </div>
               
               <div className="overflow-x-auto">
@@ -475,7 +530,13 @@ function QuoteDetailModal({ quote, onRefresh, vendorName }: { quote: Quote, onRe
                         <td className="px-5 py-5 text-center">
                           {editMode ? (
                             <div className="relative w-24 mx-auto">
-                              <Input type="number" className="text-center font-black h-10 rounded-xl pr-6" value={item.m2} onChange={(e) => handleUpdateItem(idx, { m2: parseFloat(e.target.value) || 0 })} />
+                              <Input 
+                                type="number" 
+                                className="text-center font-black h-10 rounded-xl pr-6 transition-all focus:ring-2 focus:ring-[#3B82C4]" 
+                                value={item.m2 || ''} 
+                                onFocus={(e) => e.target.select()}
+                                onChange={(e) => handleUpdateItem(idx, { m2: parseFloat(e.target.value) || 0 })} 
+                              />
                               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">m²</span>
                             </div>
                           ) : <span className="font-bold text-slate-700 text-base">{item.m2} m²</span>}
@@ -496,7 +557,13 @@ function QuoteDetailModal({ quote, onRefresh, vendorName }: { quote: Quote, onRe
                           {editMode ? (
                             <div className="relative w-36 ml-auto">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-black">$</span>
-                              <Input type="number" className="pl-7 text-right font-black h-10 rounded-xl" value={item.pricePerBox} onChange={(e) => handleUpdateItem(idx, { pricePerBox: parseFloat(e.target.value) || 0 })} />
+                              <Input 
+                                type="number" 
+                                className="pl-7 text-right font-black h-10 rounded-xl transition-all focus:ring-2 focus:ring-[#3B82C4]" 
+                                value={item.pricePerBox || ''} 
+                                onFocus={(e) => e.target.select()}
+                                onChange={(e) => handleUpdateItem(idx, { pricePerBox: parseFloat(e.target.value) || 0 })} 
+                              />
                             </div>
                           ) : <span className="font-bold text-slate-700 text-base">{formatARS(item.pricePerBox)}</span>}
                         </td>
@@ -532,7 +599,8 @@ function QuoteDetailModal({ quote, onRefresh, vendorName }: { quote: Quote, onRe
                       <Input 
                         type="number" 
                         className="pl-10 h-16 text-2xl font-black rounded-2xl bg-slate-50 border-transparent focus:bg-white focus:ring-[#3B82C4] transition-all" 
-                        value={shipping} 
+                        value={shipping || ''} 
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) => setShipping(parseFloat(e.target.value) || 0)} 
                         disabled={!editMode && quote.status !== 'sent'} 
                       />

@@ -64,7 +64,7 @@ export default function CatalogoPage() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('search') || '');
   
   // Multi-select filters
   const [selectedCats, setSelectedCats] = useState<string[]>(
@@ -73,8 +73,10 @@ export default function CatalogoPage() {
   const [selectedSizes, setSelectedSizes] = useState<string[]>(
     searchParams.get('size')?.split(',').filter(Boolean) || []
   );
-  const [selectedFinishes, setSelectedFinishes] = useState<string[]>([]);
-  const [sort, setSort] = useState('name');
+  const [selectedFinishes, setSelectedFinishes] = useState<string[]>(
+    searchParams.get('finish')?.split(',').filter(Boolean) || []
+  );
+  const [sort, setSort] = useState(searchParams.get('sort') || 'name');
 
   useEffect(() => {
     setLoading(true);
@@ -85,6 +87,42 @@ export default function CatalogoPage() {
       })
       .catch(() => setLoading(false));
   }, []);
+
+  // Sync state with URL (Pushing changes to URL)
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (selectedCats.length > 0) params.set('categoria', selectedCats.join(','));
+    if (selectedSizes.length > 0) params.set('size', selectedSizes.join(','));
+    if (selectedFinishes.length > 0) params.set('finish', selectedFinishes.join(','));
+    if (sort !== 'name') params.set('sort', sort);
+
+    const query = params.toString();
+    const currentQuery = searchParams.toString();
+    
+    if (query !== currentQuery) {
+      router.replace(`/catalogo${query ? `?${query}` : ''}`, { scroll: false });
+    }
+  }, [search, selectedCats, selectedSizes, selectedFinishes, sort, router, searchParams]);
+
+  // Sync state with URL (Pulling changes from URL manually if needed)
+  useEffect(() => {
+    const searchParam = searchParams.get('search') || '';
+    if (searchParam !== search) setSearch(searchParam);
+
+    const catParam = searchParams.get('categoria')?.split(',').filter(Boolean) || [];
+    if (JSON.stringify(catParam) !== JSON.stringify(selectedCats)) setSelectedCats(catParam);
+    
+    const sizeParam = searchParams.get('size')?.split(',').filter(Boolean) || [];
+    if (JSON.stringify(sizeParam) !== JSON.stringify(selectedSizes)) setSelectedSizes(sizeParam);
+
+    const finishParam = searchParams.get('finish')?.split(',').filter(Boolean) || [];
+    if (JSON.stringify(finishParam) !== JSON.stringify(selectedFinishes)) setSelectedFinishes(finishParam);
+
+    const sortParam = searchParams.get('sort') || 'name';
+    if (sortParam !== sort) setSort(sortParam);
+  }, [searchParams]); // Re-run when URL search params change
+
 
   const filteredProducts = useMemo(() => {
     let result = [...products];
@@ -377,7 +415,7 @@ export default function CatalogoPage() {
               <div className="mt-16 text-center border-t border-border/50 pt-12 pb-8">
                 <p className="text-muted-foreground text-sm font-medium mb-4">¿No encontrás lo que buscás?</p>
                 <Button variant="outline" className="border-ran-cerulean/30 text-ran-cerulean hover:bg-ran-cerulean/10 h-12 px-8 rounded-2xl font-bold" asChild>
-                  <a href="/chat">Preguntale a nuestra IA <ChevronRight className="ml-2 h-4 w-4" /></a>
+                  <a href="/chat">Asesoramiento en línea <ChevronRight className="ml-2 h-4 w-4" /></a>
                 </Button>
               </div>
             )}

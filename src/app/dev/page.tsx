@@ -97,7 +97,7 @@ export default function DevPanelPage() {
 
   return (
     <DevGuard>
-      <div className="min-h-screen bg-[#0F1A2E] text-white p-6 sm:p-10 font-sans">
+      <div className="min-h-[100dvh] bg-[#0F1A2E] text-white p-6 sm:p-10 font-sans">
         <header className="mb-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="h-14 w-14 ran-gradient rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">

@@ -128,7 +128,7 @@ export default function SecretariaPage() {
 
   return (
     <RoleGuard allowedRoles={['secretaria', 'admin']}>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-[100dvh] bg-background">
         <div className="bg-[#1B2A4A] py-8">
           <div className="container mx-auto px-4 flex justify-between items-center">
             <div>
@@ -194,12 +194,13 @@ export default function SecretariaPage() {
                         </Select>
                         <Input 
                           type="number" 
-                          className="w-20" 
+                          className="w-20 transition-all focus:ring-2 focus:ring-[#3B82C4]" 
                           min="1" 
-                          value={item.boxes}
+                          value={item.boxes || ''}
+                          onFocus={(e) => e.target.select()}
                           onChange={e => {
                             const items = [...newSale.items];
-                            items[idx].boxes = parseInt(e.target.value);
+                            items[idx].boxes = parseInt(e.target.value) || 0;
                             setNewSale({...newSale, items});
                           }}
                         />

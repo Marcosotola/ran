@@ -204,9 +204,24 @@
   0%   { background-position: -1000px 0; }
   100% { background-position: 1000px 0; }
 }
+@keyframes subtleZoom {
+  0%   { transform: scale(1.1); }
+  50%  { transform: scale(1.15); }
+  100% { transform: scale(1.1); }
+}
+@keyframes bounceSlow {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
 
 .animate-fade-in-up {
   animation: fadeInUp 0.5s ease forwards;
+}
+.animate-subtle-zoom {
+  animation: subtleZoom 20s infinite ease-in-out;
+}
+.animate-bounce-slow {
+  animation: bounceSlow 3s infinite ease-in-out;
 }
 .skeleton {
   background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);

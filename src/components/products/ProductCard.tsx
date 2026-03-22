@@ -81,7 +81,7 @@ export function ProductCard({ product }: ProductCardProps) {
             <Button className="flex-[2] ran-gradient text-white border-0 hover:opacity-90 h-9 text-xs font-bold shadow-sm" size="sm" asChild>
               <Link href={`/catalogo/${product.id}`}>
                 <Eye className="h-3.5 w-3.5 mr-1.5" />
-                Ver detalle
+                Ver
               </Link>
             </Button>
             <Button
@@ -90,9 +90,9 @@ export function ProductCard({ product }: ProductCardProps) {
               className="flex-1 h-9 border-ran-cerulean/30 hover:bg-ran-cerulean/10 hover:border-ran-cerulean text-ran-cerulean font-bold text-[10px]"
               asChild
             >
-              <Link href={`/chat?producto=${product.id}`} title="Consultar con IA">
+              <Link href={`/chat?producto=${product.id}`} title="Consultar con un asesor">
                 <MessageSquare className="h-3.5 w-3.5 mr-1" />
-                IA
+                Asesor
               </Link>
             </Button>
           </div>

@@ -1,6 +1,11 @@
 import * as admin from 'firebase-admin';
 
-if (!admin.apps.length) {
+const hasCredentials = 
+  !!process.env.FIREBASE_ADMIN_PROJECT_ID && 
+  !!process.env.FIREBASE_ADMIN_CLIENT_EMAIL && 
+  !!process.env.FIREBASE_ADMIN_PRIVATE_KEY;
+
+if (hasCredentials && !admin.apps.length) {
   try {
     admin.initializeApp({
       credential: admin.credential.cert({
@@ -13,7 +18,21 @@ if (!admin.apps.length) {
   } catch (err: any) {
     console.error('[Admin SDK] Initialization error:', err.message);
   }
+} else if (!hasCredentials) {
+  console.warn('[Admin SDK] Warning: No credentials found. Admin services will be unavailable.');
 }
 
-export const dbAdmin = admin.firestore();
-export const authAdmin = admin.auth();
+// Proxy-like lazy export to avoid crash on evaluation
+export const getDbAdmin = () => {
+  if (!admin.apps.length && !hasCredentials) return null;
+  return admin.firestore();
+};
+
+export const getAuthAdmin = () => {
+  if (!admin.apps.length && !hasCredentials) return null;
+  return admin.auth();
+};
+
+// Also export as legacy for compatibility if possible, though getters are better
+export const dbAdmin = hasCredentials ? admin.firestore() : null;
+export const authAdmin = hasCredentials ? admin.auth() : null;

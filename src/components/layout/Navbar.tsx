@@ -23,6 +23,12 @@ import {
   SheetTrigger 
 } from '@/components/ui/sheet';
 import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { toast } from 'sonner';
+import {
   Menu,
   X,
   ChevronDown,
@@ -31,9 +37,15 @@ import {
   User,
   MessageSquare,
   UserCircle,
+  Headset,
+  Download,
+  Share,
+  PlusSquare,
+  Monitor
 } from 'lucide-react';
 
 const NAV_LINKS = [
+  { href: '/', label: 'Inicio' },
   { href: '/catalogo', label: 'Catálogo' },
   { href: '/inspiracion', label: 'Inspiración' },
   { href: '/contacto', label: 'Contacto' },
@@ -78,15 +90,53 @@ export function Navbar() {
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [showiOSModal, setShowiOSModal] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    // Detect PWA status
+    if (typeof window !== 'undefined') {
+      if (window.matchMedia('(display-mode: standalone)').matches) {
+        setIsInstalled(true);
+      }
+      
+      const handleBeforeInstallPrompt = (e: any) => {
+        e.preventDefault();
+        setDeferredPrompt(e);
+      };
+
+      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.addEventListener('scroll', handleScroll);
+      
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        window.removeEventListener('scroll', handleScroll);
+      };
+    }
   }, []);
+
+  const handleInstallClick = async () => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isMac = /Macintosh/.test(navigator.userAgent);
+
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+        setIsInstalled(true);
+      }
+    } else if (isIOS || isMac) {
+      setShowiOSModal(true);
+    } else {
+      toast.info('Para instalar en este navegador, usa el menú de opciones (tres puntos) y elige \"Instalar aplicación\"');
+    }
+  };
 
   const initials = ranUser?.displayName
     ? ranUser.displayName
@@ -110,15 +160,16 @@ export function Navbar() {
           : 'bg-white shadow-sm border-gray-200'
       }`}
     >
-      <nav className="container mx-auto flex h-22 items-center justify-between px-4">
+      <nav className="container mx-auto flex h-28 items-center justify-between px-4 sm:px-8">
         
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/nosotros" className="flex items-center gap-2 shrink-0 transition-transform hover:scale-[1.02] active:scale-95">
           <Image
             src={scrolled ? '/logo2Blanco.svg' : '/logo2Azul.svg'}
             alt="RAN Pisos & Revestimientos"
-            width={300}
-            height={250}
+            width={450}
+            height={150}
+            className="h-24 md:h-28 w-auto object-contain"
             priority
           />
         </Link>
@@ -157,8 +208,8 @@ export function Navbar() {
             asChild
           >
             <Link href="/chat">
-              <MessageSquare className="h-4 w-4" />
-              Chat IA
+              <Headset className="h-4 w-4" />
+              Asesoramiento en línea
             </Link>
           </Button>
 
@@ -203,6 +254,11 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  {!isInstalled && (
+                    <DropdownMenuItem onClick={handleInstallClick} className="flex items-center gap-2 cursor-pointer text-[#3B82C4] font-bold">
+                      <Download className="h-4 w-4" /> Instalar Aplicación
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => logOut()} className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive">
                     <LogOut className="h-4 w-4" /> Cerrar Sesión
                   </DropdownMenuItem>
@@ -250,7 +306,7 @@ export function Navbar() {
 
             <SheetContent
               side="right"
-              className="w-72 bg-[var(--color-ran-navy)] border-white/10 text-white flex flex-col p-0"
+              className="w-72 bg-[var(--color-ran-navy)] border-white/10 text-white flex flex-col p-0 [&>button]:bg-white [&>button]:text-ran-navy [&>button]:hover:bg-white/90 [&>button]:shadow-lg [&>button]:rounded-full [&>button]:right-4 [&>button]:top-4"
             >
               {/* ACCESIBILIDAD: Header obligatorio pero oculto visualmente */}
               <SheetHeader className="sr-only">
@@ -275,8 +331,8 @@ export function Navbar() {
                     onClick={() => setMobileOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 rounded-lg text-lg font-medium bg-[var(--color-ran-cerulean)]/20 hover:bg-[var(--color-ran-cerulean)]/30 transition-colors text-[var(--color-ran-cerulean)]"
                   >
-                    <MessageSquare className="h-5 w-5" />
-                    Chat con IA
+                    <Headset className="h-5 w-5" />
+                    Asesoramiento en línea
                   </Link>
                 </div>
 
@@ -313,6 +369,16 @@ export function Navbar() {
 
                       <p className="px-4 text-[11px] font-bold text-white/30 uppercase tracking-[0.2em] mb-2">Mi Cuenta</p>
                       
+                      {!isInstalled && (
+                        <button 
+                          onClick={() => { handleInstallClick(); setMobileOpen(false); }} 
+                          className="flex items-center gap-3 px-4 py-3 text-ran-cerulean hover:bg-ran-cerulean/10 rounded-lg transition-colors w-full text-left"
+                        >
+                          <Download className="h-5 w-5" /> 
+                          <span className="text-base font-bold">Instalar Aplicación</span>
+                        </button>
+                      )}
+
                       <Link href={getDashboardUrl(ranUser.role)} onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg transition-colors">
                         <LayoutDashboard className="h-5 w-5 opacity-70" /> 
                         <span className="text-base">Mi Panel</span>
@@ -338,6 +404,42 @@ export function Navbar() {
           </Sheet>
         </div>
       </nav>
+
+      {/* iOS/Mac Instructions Modal */}
+      <Dialog open={showiOSModal} onOpenChange={setShowiOSModal}>
+        <DialogContent className="max-w-md p-0 overflow-hidden rounded-[2rem]">
+          <div className="bg-[#1B2A4A] p-8 text-white text-center">
+            <div className="h-16 w-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
+              <PlusSquare className="h-8 w-8" />
+            </div>
+            <DialogTitle className="text-2xl font-black">Instalar RAN en Apple</DialogTitle>
+            <p className="text-white/60 text-sm mt-2 font-medium">Sigue estos pasos para instalar en tu iPhone o Mac</p>
+          </div>
+
+          <div className="p-8 space-y-6">
+            <div className="flex items-start gap-4">
+              <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-400 shrink-0">1</div>
+              <p className="text-slate-600 font-medium">Abre <span className="text-blue-500 font-bold">Safari</span> y entra en nuestra web.</p>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-400 shrink-0">2</div>
+              <p className="text-slate-600 font-medium">Pulsa el botón de <span className="font-bold">Compartir</span> <Share className="h-4 w-4 inline mb-1" /> (el cuadrado con la flecha).</p>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-400 shrink-0">3</div>
+              <p className="text-slate-600 font-medium">Busca la opción <span className="font-bold">"Agregar a Pantalla de Inicio"</span> <PlusSquare className="h-4 w-4 inline mb-1" />.</p>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-400 shrink-0">4</div>
+              <p className="text-slate-600 font-medium">¡Listo! Ya tienes el ícono de <span className="font-black">RAN</span> junto a tus apps.</p>
+            </div>
+
+            <Button className="w-full h-14 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black rounded-2xl border-0 shadow-none mt-4" onClick={() => setShowiOSModal(false)}>
+              LO ENTIENDO
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </header>
   );
 }

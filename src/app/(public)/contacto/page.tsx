@@ -9,7 +9,8 @@ import {
   MessageSquare, 
   Send, 
   Instagram, 
-  Facebook 
+  Facebook,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,9 +26,34 @@ export default function ContactoPage() {
     return subscribeToSettings((data) => setSettings(data));
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    lastName: '',
+    email: '',
+    message: ''
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Mensaje enviado correctamente. Nos contactaremos a la brevedad.');
+    setSubmitting(true);
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (!res.ok) throw new Error('Error al enviar el mensaje');
+
+      toast.success('¡Mensaje enviado con éxito! Nos contactaremos a la brevedad.');
+      setFormData({ name: '', lastName: '', email: '', message: '' });
+    } catch (err: any) {
+      toast.error('Ocurrió un error al enviar: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const contact = settings?.contactInfo;
@@ -148,16 +174,34 @@ export default function ContactoPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-bold text-ran-navy">Nombre</label>
-                      <Input placeholder="Tu nombre" className="rounded-xl border-border bg-muted/30 focus:border-ran-cerulean h-12" required />
+                      <Input 
+                        placeholder="Tu nombre" 
+                        className="rounded-xl border-border bg-muted/30 focus:border-ran-cerulean h-12" 
+                        required 
+                        value={formData.name}
+                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                      />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-bold text-ran-navy">Apellido</label>
-                      <Input placeholder="Tu apellido" className="rounded-xl border-border bg-muted/30 focus:border-ran-cerulean h-12" />
+                      <Input 
+                        placeholder="Tu apellido" 
+                        className="rounded-xl border-border bg-muted/30 focus:border-ran-cerulean h-12" 
+                        value={formData.lastName}
+                        onChange={e => setFormData({ ...formData, lastName: e.target.value })}
+                      />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-ran-navy">Correo Electrónico</label>
-                    <Input type="email" placeholder="email@ejemplo.com" className="rounded-xl border-border bg-muted/30 focus:border-ran-cerulean h-12" required />
+                    <Input 
+                      type="email" 
+                      placeholder="email@ejemplo.com" 
+                      className="rounded-xl border-border bg-muted/30 focus:border-ran-cerulean h-12" 
+                      required 
+                      value={formData.email}
+                      onChange={e => setFormData({ ...formData, email: e.target.value })}
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-ran-navy">Mensaje</label>
@@ -165,10 +209,13 @@ export default function ContactoPage() {
                       placeholder="¿En qué podemos ayudarte?" 
                       className="rounded-xl border-border bg-muted/30 focus:border-ran-cerulean min-h-[150px] resize-none"
                       required
+                      value={formData.message}
+                      onChange={e => setFormData({ ...formData, message: e.target.value })}
                     />
                   </div>
-                  <Button type="submit" className="w-full h-12 ran-gradient text-white border-0 font-bold shadow-lg hover:shadow-xl transition-all">
-                    <Send className="mr-2 h-4 w-4" /> Enviar Mensaje
+                  <Button type="submit" disabled={submitting} className="w-full h-12 ran-gradient text-white border-0 font-bold shadow-lg hover:shadow-xl transition-all">
+                    {submitting ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Send className="mr-2 h-4 w-4" />}
+                    {submitting ? 'Enviando...' : 'Enviar Mensaje'}
                   </Button>
                 </form>
               </Card>

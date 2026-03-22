@@ -29,9 +29,9 @@ const FEATURES = [
   {
     icon: MessageSquare,
     color: '#4A90E2', // Cerulean
-    title: 'Chat con IA',
+    title: 'Asesoramiento en línea',
     description:
-      'Nuestro asistente inteligente te asesora sobre qué producto elegir según tu espacio y te genera un presupuesto al instante.',
+      'Nuestro equipo de asesores te asiste sobre qué producto elegir según tu espacio y te genera un presupuesto al instante.',
   },
   {
     icon: Zap,
@@ -84,7 +84,7 @@ const ProductCarousel = ({ title, products, icon: Icon }: { title: string; produ
             {products.map((p) => (
               <div 
                 key={p.id} 
-                className="min-w-[260px] sm:min-w-[calc(100%/2-1.5rem)] md:min-w-[calc(100%/3-1.5rem)] lg:min-w-[calc(100%/4-1.5rem)] xl:min-w-[calc(100%/5-1.5rem)] snap-center"
+                className="min-w-[150px] sm:min-w-[calc(100%/2-1.5rem)] md:min-w-[calc(100%/3-1.5rem)] lg:min-w-[calc(100%/4-1.5rem)] xl:min-w-[calc(100%/5-1.5rem)] snap-center"
               >
                 <ProductCard product={p} />
               </div>
@@ -105,7 +105,7 @@ const HERO_SLIDES = [
   {
     image: '/banner2.png',
     title: 'Tecnología y Estilo para tu Hogar',
-    subtitle: 'Asesoramiento con IA y presupuestos inmediatos según tus necesidades.'
+    subtitle: 'Asesoramiento en línea y presupuestos inmediatos según tus necesidades.'
   },
   {
     image: '/banner3.png',
@@ -195,7 +195,7 @@ export default function HomePage() {
               >
                 <Link href="/chat">
                   <MessageSquare className="mr-2 h-4 w-4" />
-                  Chat con IA
+                  Asesoramiento en línea
                 </Link>
               </Button>
             </div>
@@ -272,7 +272,7 @@ export default function HomePage() {
               <span className="ran-text-gradient">tu piso</span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-              Combinamos tecnología de inteligencia artificial con el expertise de nuestros vendedores para darte la mejor experiencia.
+              Combinamos nuestro asesoramiento técnico especializado con la cercanía de nuestros vendedores para darte la mejor experiencia.
             </p>
           </div>
 
@@ -305,7 +305,7 @@ export default function HomePage() {
           Pisos y Revestimientos para <span className="text-ran-cerulean italic">toda la vida</span>
         </h1>
           <p className="text-white/70 text-lg mb-10 max-w-xl mx-auto">
-            Usá nuestro chat con IA para obtener una recomendación personalizada y tu presupuesto en menos de 2 minutos.
+            Usá nuestro canal de asesoramiento en línea para obtener una recomendación personalizada y tu presupuesto en menos de 2 minutos.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <Button
@@ -315,7 +315,7 @@ export default function HomePage() {
             >
               <Link href="/chat">
                 <MessageSquare className="mr-2 h-5 w-5" />
-                Iniciar chat con IA
+                Iniciar asesoramiento en línea
               </Link>
             </Button>
             <Button

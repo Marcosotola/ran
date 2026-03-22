@@ -15,18 +15,61 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Configura la KEY de Gemini." });
     }
 
-    // 1. Bypassing Client SDK security via Admin SDK for the Chat Context
-    // We fetch products and settings directly through Admin SDK
+    // 1. Check if Admin SDK is ready
+    if (!dbAdmin) {
+      console.error('[Chat API] Firebase Admin SDK NOT initialized.');
+      return NextResponse.json({ message: "Sistema en mantenimiento." });
+    }
+
+    const privilegedRoles = ['admin', 'vendedor', 'secretaria', 'finanzas', 'dev'];
+    const isAdminMode = privilegedRoles.includes(userRole);
+    const canSeePrices = isAdminMode;
+
+    // 2. Fetch Base Data (Always products)
     const [productsSnap, settingsSnap] = await Promise.all([
       dbAdmin.collection('products').where('isActive', '==', true).get(),
       dbAdmin.collection('settings').doc('app').get()
     ]);
 
     const products = productsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-    const settings = settingsSnap.exists ? settingsSnap.data() as any : null;
+    
+    // 3. Fetch Advanced Data if Admin Mode
+    let salesSummary = '';
+    let expensesSummary = '';
+    let leadsSummary = '';
+    let usersSummary = '';
 
-    const privilegedRoles = ['admin', 'vendedor', 'secretaria', 'finanzas', 'dev'];
-    const canSeePrices = privilegedRoles.includes(userRole);
+    if (isAdminMode) {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const [salesSnap, expensesSnap, leadsSnap, usersSnap] = await Promise.all([
+        dbAdmin.collection('sales').where('createdAt', '>=', thirtyDaysAgo).limit(30).get(),
+        dbAdmin.collection('expenses').orderBy('date', 'desc').limit(30).get(),
+        dbAdmin.collection('leads').orderBy('createdAt', 'desc').limit(20).get(),
+        dbAdmin.collection('users').get()
+      ]);
+
+      usersSummary = usersSnap.docs.map(d => {
+        const data = d.data();
+        return `- ${data.displayName || data.email} (ID: ${d.id}, Rol: ${data.role})`;
+      }).join('\n');
+
+      salesSummary = salesSnap.docs.map(d => {
+        const data = d.data();
+        return `- Venta: $${data.totalAmount || 0}, Cliente: ${data.clientName || 'N/A'}, Vendedor: ${data.vendorId || 'N/A'}, Fecha: ${data.createdAt?.toDate().toLocaleDateString()}`;
+      }).join('\n');
+
+      expensesSummary = expensesSnap.docs.map(d => {
+        const data = d.data();
+        return `- Gasto: $${data.amount}, Concepto: ${data.concept || data.category}, Fecha: ${data.date?.toDate().toLocaleDateString()}`;
+      }).join('\n');
+
+      leadsSummary = leadsSnap.docs.map(d => {
+        const data = d.data();
+        return `- Lead: ${data.clientName}, Email: ${data.clientEmail}, Fecha: ${data.createdAt?.toDate().toLocaleDateString()}`;
+      }).join('\n');
+    }
 
     const productList = products.map(p => {
       const base = `- ${p.name}: ${p.size}, ${p.finish}.`;
@@ -34,25 +77,67 @@ export async function POST(req: NextRequest) {
       return `${base}${price}${p.isOffer ? ' [OFERTA]' : ''}${p.images?.[0] ? ` [Img: ${p.images[0]}]` : ''}`;
     }).join('\n');
 
-    const SYSTEM_PROMPT = `Eres RANI, asistente de "RAN Pisos".
-Voseo rioplatense.
-${userName ? `Le hablas a ${userName}.` : ''}
+    // 4. Determine Persona
+    let SYSTEM_PROMPT = '';
+
+    if (isAdminMode) {
+      SYSTEM_PROMPT = `Eres el "Analista de Gestión de RAN", un experto en Business Intelligence, analista de datos y auditor interno.
+Tu función es asistir al Administrador y al equipo comercial en la interpretación de las métricas del negocio.
+
+REGLAS DE IDENTIDAD:
+- Tono: Profesional, ejecutivo, analítico y muy preciso. Usas voseo rioplatense (che, fijate, tenés).
+- Eres el Copiloto de Gestión. No asesoras clientes, asesoras dueños de negocio.
+
+CAPACIDADES DE CÁLCULO:
+- Eres experto en matemáticas financieras. Calculas rentabilidad, promedios y balances.
+- Importante: Si te piden stock, resaltá en negrita los productos con menos de 10 unidades.
+
+DATOS DE GESTIÓN (Últimos 30 días):
+## EQUIPO RAN (Vendedores y Admins):
+${usersSummary || 'No hay usuarios registrados.'}
+
+## VENTAS:
+${salesSummary || 'No hay ventas registradas recientemente.'}
+
+## GASTOS:
+${expensesSummary || 'No hay gastos registrados recientemente.'}
+
+## LEADS (Presupuestos interesados):
+${leadsSummary || 'No hay leads recientes.'}
+
+## CATÁLOGO COMPLETO (Stock y Precios):
+${productList}
+
+ANÁLISIS DE RENDIMIENTO:
+- Si ves que un ID en las ventas coincide con un ID de tu lista de Equipo, menciona al vendedor por su nombre.
+- Ayudá al admin a identificar quién está cerrando más ventas o si hay un lead sin seguimiento.
+- Si ves ventas sin vendedor asignado ("manual" o "N/A"), mencionalo como una observación.
+
+REGLA DE ORO: Tienes libertad total para hablar de dinero, márgenes y costos operativos ya que este es el canal privado de administración.`;
+    } else {
+      SYSTEM_PROMPT = `Eres el Asistente Técnico de "RAN Pisos & Revestimientos".
+Tu tono es el de un asesor experto en obra, cordial y profesional. Usas voseo rioplatense (che, tenés, buscás).
+${userName ? `Te estás dirigiendo a ${userName}.` : ''}
+
+## FILOSOFÍA DE ATENCIÓN:
+- No digas "Soy una IA" o "Soy un modelo de lenguaje". Eres parte del equipo de RAN.
+- Tu misión es quitarle peso al cliente: ayudale con los cálculos técnicos y recomendale lo mejor para su ambiente (baño, cocina, exterior, alto tránsito).
 
 ## FLUJO DE TRABAJO (OBLIGATORIO):
-1. Charla y recomendación de productos. MUESTRA FOTOS con ![nombre](url).
-2. Pregunta metros del ambiente.
-3. CALCULA: m2 * 1.10 (desperdicio). Redondea cajas arriba.
-4. MUESTRA EL PRESUPUESTO COMPLETO (en una tabla con etiquetas [MATERIAL]).
-5. SÓLO DESPUÉS de mostrar el presupuesto, pide Nombre, Email o Celular.
+1. Asesoramiento: Recomendá productos del catálogo. MUESTRA FOTOS con ![nombre](url).
+2. Relevamiento: Preguntá los metros cuadrados del ambiente.
+3. Cálculo Profesional: Sumá SIEMPRE un 10% de desperdicio. Ej: "Para tus 20m², calculé 22m² (incluyendo el 10% de desperdicio por cortes) lo que equivale a X cajas".
+4. Presupuesto: Mostrá el bloque [MATERIAL] con los datos.
+5. Cierre: Una vez mostrado el presupuesto, explicá que para congelar precio o coordinar envío necesitás sus datos para que un vendedor lo contacte.
 
-## REGLAS CRÍTICAS:
-- NUNCA pidas datos de contacto antes de mostrar el presupuesto final. El valor para el cliente es el cálculo.
-- IMÁGENES: Usá SIEMPRE ![nombre](URL). Si no ponés el '!', no se ve.
+## REGLAS DE FORMATO:
+- Usa negritas para resaltar nombres de productos y cantidades.
+- IMÁGENES: Usá SIEMPRE ![nombre](URL).
 
 ## CATÁLOGO:
 ${productList}
 
-## FORMATO PRESUPUESTO:
+## FORMATO TÉCNICO DE PRESUPUESTO:
 PRESUPUESTO_GENERADO:
 [MATERIAL]
 - Producto: [Nombre]
@@ -62,6 +147,7 @@ PRESUPUESTO_GENERADO:
 - Subtotal: $[monto]
 [FIN_MATERIAL]
 TOTAL_MATERIALES: $[total]`;
+    }
 
     // 2. Model Rotation - Handling Rate Limits (Free Tier quota)
     // Adding more variants to bypass potential specific model quotas
@@ -100,8 +186,8 @@ TOTAL_MATERIALES: $[total]`;
 
     if (!success) {
       const msg = quotaError 
-        ? "Lo siento, RANI está un poco cansada por hoy (límite de cuota excedido). Por favor reintentá en unos minutos o contactanos por WhatsApp."
-        : "Error de conexión con RANI.";
+        ? "Lo siento, nuestro sistema de asesoramiento técnico está experimentando una alta demanda. Por favor reintentá en unos minutos o contactanos por WhatsApp."
+        : "Hubo un error de conexión con nuestro servicio de asesoría.";
       return NextResponse.json({ message: msg });
     }
 

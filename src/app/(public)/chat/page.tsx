@@ -12,13 +12,14 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
   Send,
-  Bot,
+  Headset,
   User,
   Loader2,
   CheckCircle2,
   Sparkles,
   MessageSquare,
   Package,
+  BarChart3,
 } from 'lucide-react';
 
 const MarkdownMessage = ({ content }: { content: string }) => {
@@ -65,14 +66,11 @@ const MarkdownMessage = ({ content }: { content: string }) => {
   );
 };
 
-const WELCOME = `¡Hola! 👋 Soy **RANI**, el asistente de **RAN Pisos & Revestimientos**.
+const WELCOME = `¡Hola! 👋 Bienvenido a **RAN**. 
 
-Elegir el piso ideal es una gran decisión. Puedo ayudarte con:
-1. Recomendaciones según tu estilo
-2. Cálculo de cajas necesarias
-3. Presupuesto detallado para tu obra
+Soy tu asesor virtual y estoy aquí para ayudarte a encontrar el piso o revestimiento ideal para tu proyecto. 
 
-¿Qué proyecto tenés en mente hoy?`;
+¿Tenés alguna idea en mente o preferís que te ayude a calcular los materiales para un ambiente específico?`;
 
 interface ContactForm {
   name: string;
@@ -82,11 +80,13 @@ interface ContactForm {
 
 export default function ChatPage() {
   const { ranUser } = useAuth();
+  const isAdmin = useMemo(() => ['admin', 'vendedor', 'secretaria', 'finanzas', 'dev'].includes(ranUser?.role || ''), [ranUser]);
+  
   const searchParams = useSearchParams();
   const productId = searchParams.get('producto');
 
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'assistant', content: WELCOME, timestamp: new Date() },
+    { role: 'assistant', content: isAdmin ? 'Hola. Soy tu Analista de Gestión. ¿Qué métricas o datos del negocio necesitás revisar hoy?' : WELCOME, timestamp: new Date() },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -120,14 +120,14 @@ export default function ChatPage() {
   useEffect(() => {
     if (productId) {
       getProduct(productId).then((p) => {
-        if (p) handleSend(`Estoy interesado en el producto: ${p.name}. ¿Me podés dar más info?`);
+        if (p) handleSend(`Hola, me interesa el ${p.name}. ¿Es adecuado para un living de alto tránsito?`);
       });
     }
   }, [productId]);
 
   const detectQuotesInResponse = (text: string): QuoteItem[] => {
     // We remove the strict requirement for 'PRESUPUESTO_GENERADO:' 
-    // because if RANI writes [MATERIAL], we WANT to catch it.
+    // because if the advisor writes [MATERIAL], we WANT to catch it.
     if (!text.includes('[MATERIAL]') && !text.includes('Producto:')) return [];
     
     const items: QuoteItem[] = [];
@@ -284,13 +284,22 @@ export default function ChatPage() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       {/* Header */}
-      <div className="bg-[#1B2A4A] py-6 shadow-md z-10">
+      <div className={`${isAdmin ? 'bg-slate-900' : 'bg-[#1B2A4A]'} py-6 shadow-md z-10 transition-colors`}>
         <div className="container mx-auto px-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-2xl ran-gradient flex items-center justify-center shadow-lg"><Sparkles className="h-6 w-6 text-white" /></div>
+            <div className={`h-12 w-12 rounded-2xl ${isAdmin ? 'bg-blue-600' : 'ran-gradient'} flex items-center justify-center shadow-lg transition-all`}>
+              {isAdmin ? <BarChart3 className="h-6 w-6 text-white" /> : <Sparkles className="h-6 w-6 text-white" />}
+            </div>
             <div>
-              <h1 className="text-xl font-black text-white flex items-center gap-2">RANI <Badge className="bg-green-500/20 text-green-400">Online</Badge></h1>
-              <p className="text-white/50 text-xs">Asistente Inteligente de RAN</p>
+              <h1 className="text-xl font-black text-white flex items-center gap-2">
+                {isAdmin ? 'Control de Gestión' : 'Asesoría Técnica'} 
+                <Badge className={isAdmin ? "bg-blue-500/20 text-blue-400" : "bg-green-500/20 text-green-400"}>
+                  {isAdmin ? 'BI Admin' : 'Asesor'}
+                </Badge>
+              </h1>
+              <p className="text-white/50 text-xs">
+                {isAdmin ? 'Inteligencia de Negocios RAN' : 'Especialista en Revestimientos'}
+              </p>
             </div>
           </div>
           <Button variant="ghost" className="text-white/60 hover:text-white" onClick={() => window.location.href = '/'}>Salir</Button>
@@ -302,7 +311,7 @@ export default function ChatPage() {
           {messages.map((msg, i) => (
             <div key={i} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''} animate-fade-in`}>
               <div className={`h-10 w-10 shrink-0 rounded-2xl flex items-center justify-center ${msg.role === 'assistant' ? 'ran-gradient text-white shadow-lg' : 'bg-white border text-slate-400'}`}>
-                {msg.role === 'assistant' ? <Bot className="h-6 w-6" /> : <User className="h-6 w-6" />}
+                {msg.role === 'assistant' ? <Headset className="h-6 w-6" /> : <User className="h-6 w-6" />}
               </div>
               <div className={`max-w-[80%] p-5 rounded-[28px] shadow-sm ${msg.role === 'assistant' ? 'bg-white assistant-bubble border border-slate-100' : 'bg-[#1B2A4A] text-white rounded-tr-none'}`}>
                 {msg.role === 'assistant' ? (
@@ -339,8 +348,10 @@ export default function ChatPage() {
 
           {loading && (
             <div className="flex gap-4 items-center">
-              <div className="h-10 w-10 ran-gradient rounded-2xl flex items-center justify-center animate-pulse"><Bot className="h-6 w-6 text-white" /></div>
-              <div className="bg-white px-4 py-3 rounded-2xl italic text-slate-400 text-sm">RANI está analizando tu solicitud...</div>
+              <div className="h-10 w-10 ran-gradient rounded-2xl flex items-center justify-center animate-pulse"><Headset className="h-6 w-6 text-white" /></div>
+              <div className="bg-white px-4 py-3 rounded-2xl italic text-slate-400 text-sm">
+                {isAdmin ? 'Procesando datos del negocio...' : 'Estamos preparando tu presupuesto...'}
+              </div>
             </div>
           )}
 
@@ -357,7 +368,7 @@ export default function ChatPage() {
                 <Input placeholder="WhatsApp / Teléfono" className="h-14 rounded-2xl border-slate-200 text-lg font-bold" value={contactForm.phone} onChange={e => setContactForm(f => ({...f, phone: e.target.value}))} />
                 <Button className="w-full h-16 ran-gradient text-white font-black text-xl rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all" onClick={handleAcceptQuote} disabled={submitting}>
                   {submitting ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2" />}
-                  ENVIAR MI PRESUPUESTO
+                  SOLICITAR CONTACTO COMERCIAL
                 </Button>
               </div>
             </div>
@@ -372,14 +383,14 @@ export default function ChatPage() {
             <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-full w-fit mb-1 border border-blue-100 animate-pulse">
               <Package className="h-4 w-4" />
               <span className="text-[10px] uppercase font-black tracking-widest">
-                {detectedItems.length} materiales detectados para tu presupuesto
+                {detectedItems.length} productos en tu presupuesto
               </span>
             </div>
           )}
           <div className="flex gap-3">
             <Input 
               ref={inputRef}
-              placeholder="Escribí tu consulta aquí..."
+              placeholder={isAdmin ? "Consultá ingresos, egresos, stock o rendimiento..." : "Consultá por m², stock o modelos..."}
               className="h-16 rounded-3xl border-slate-200 px-6 text-lg focus:ring-2 focus:ring-[#3B82C4] transition-all"
               value={input}
               onChange={e => setInput(e.target.value)}

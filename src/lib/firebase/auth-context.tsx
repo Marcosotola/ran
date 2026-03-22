@@ -14,6 +14,7 @@ import {
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './config';
 import { RANUser, UserRole } from '@/lib/types';
+import { requestNotificationPermission } from './messaging-utils';
 
 interface AuthContextType {
   user: User | null;
@@ -41,15 +42,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         document.cookie = `ran_session=${firebaseUser.uid}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
         
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        const devUid = process.env.NEXT_PUBLIC_DEV_UID;
+        
         if (userDoc.exists()) {
-          setRanUser(userDoc.data() as RANUser);
+          const data = userDoc.data() as RANUser;
+          // Si el UID coincide con el dev, forzamos el rol dev y lo sincronizamos con la DB
+          if (firebaseUser.uid === devUid) {
+            if (data.role !== 'dev') {
+              // Sincronizamos con Firestore para que las reglas de seguridad nos permitan escribir
+              await setDoc(doc(db, 'users', firebaseUser.uid), { ...data, role: 'dev' }, { merge: true });
+              data.role = 'dev';
+            }
+          }
+          setRanUser(data);
         } else {
           // New user via Google — create with default 'cliente' role
+          const role: UserRole = firebaseUser.uid === devUid ? 'dev' : 'cliente';
           const newUser: RANUser = {
             uid: firebaseUser.uid,
             email: firebaseUser.email!,
             displayName: firebaseUser.displayName || 'Usuario',
-            role: 'cliente',
+            role,
             createdAt: new Date(),
             isActive: true,
           };
@@ -68,6 +81,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     return unsubscribe;
   }, []);
+
+  // ── Sincronización automática de FCM Token ──────────────────────────────────
+  useEffect(() => {
+    // Solo intentamos registrar el token si el usuario está logueado 
+    // y tiene un rol que requiere notificaciones (admin, vendedor, etc.)
+    const rolesPrivilegiados: UserRole[] = ['admin', 'vendedor', 'secretaria', 'finanzas', 'dev'];
+    
+    if (ranUser && rolesPrivilegiados.includes(ranUser.role)) {
+      // Pequeño delay para no interferir con la carga inicial
+      const timer = setTimeout(() => {
+        requestNotificationPermission(ranUser.uid, ranUser.fcmTokens);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [ranUser]);
 
   const signIn = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);

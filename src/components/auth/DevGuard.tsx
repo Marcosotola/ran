@@ -8,19 +8,19 @@ import { Loader2, Lock } from 'lucide-react';
 const DEV_UID = process.env.NEXT_PUBLIC_DEV_UID;
 
 export function DevGuard({ children }: { children: React.ReactNode }) {
-  const { user, ranUser, loading } = useAuth();
+  const { role, loading } = useAuth();
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
     if (!loading) {
-      if (!user || user.uid !== DEV_UID) {
+      if (role !== 'dev') {
         setAuthorized(false);
       } else {
         setAuthorized(true);
       }
     }
-  }, [user, loading, router]);
+  }, [role, loading, router]);
 
   if (loading) {
     return (

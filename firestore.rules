@@ -3,7 +3,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Funciones de ayuda
+    // ── Funciones de ayuda ───────────────────────────────────────────────
     function isSignedIn() {
       return request.auth != null;
     }
@@ -12,37 +12,40 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
     
+    // Devuelve true si el usuario tiene alguno de los roles listados, O si es admin/dev
     function hasAnyRole(roles) {
       return isSignedIn() && (getRole() in roles || getRole() == 'admin' || getRole() == 'dev');
     }
 
-    // --- CONFIGURACIÓN GLOBAL ---
+    // ── CONFIGURACIÓN GLOBAL (settings/app) ─────────────────────────────
+    // ⚠️ CRÍTICO: Esta regla debe ir ANTES del catch-all /{document=**}
+    // Lectura pública: necesaria para que SubscriptionProvider funcione sin login
+    // Escritura: solo admin o dev pueden cambiar montos, URLs y estado
     match /settings/app {
-      // Necesario para que la app cargue (onSnapshot en SubscriptionProvider)
       allow read: if true;
       allow write: if hasAnyRole([]);
     }
 
-    // --- PRODUCTOS ---
+    // ── PRODUCTOS ────────────────────────────────────────────────────────
     match /products/{productId} {
       allow read: if true;
       allow write: if hasAnyRole(['contenido']);
     }
 
-    // --- USUARIOS ---
+    // ── USUARIOS ─────────────────────────────────────────────────────────
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || hasAnyRole([]));
       allow write: if isSignedIn() && (request.auth.uid == userId || hasAnyRole([]));
     }
 
-    // --- PRESUPUESTOS (QUOTES) ---
+    // ── PRESUPUESTOS (QUOTES) ─────────────────────────────────────────────
     match /quotes/{quoteId} {
       allow read: if isSignedIn() && (resource.data.clientId == request.auth.uid || hasAnyRole(['vendedor', 'secretaria']));
       allow create: if isSignedIn();
       allow update, delete: if isSignedIn() && (resource.data.clientId == request.auth.uid || hasAnyRole(['vendedor', 'secretaria']));
     }
 
-    // --- VENTAS Y FINANZAS ---
+    // ── VENTAS Y FINANZAS ─────────────────────────────────────────────────
     match /sales/{saleId} {
       allow read, write: if hasAnyRole(['vendedor', 'finanzas']);
     }
@@ -51,7 +54,8 @@ service cloud.firestore {
       allow read, write: if hasAnyRole(['finanzas']);
     }
 
-    // --- REGLA POR DEFECTO ---
+    // ── REGLA POR DEFECTO ─────────────────────────────────────────────────
+    // Solo admin y dev acceden a todo lo demás (leads, logs, etc.)
     match /{document=**} {
       allow read, write: if hasAnyRole([]);
     }

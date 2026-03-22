@@ -11,12 +11,27 @@ import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { UserRole } from '@/lib/types';
+
+// Mapea cada rol a su ruta de inicio
+function getRoleHome(role: UserRole | null | undefined): string {
+  switch (role) {
+    case 'dev':       return '/dev';
+    case 'admin':     return '/admin';
+    case 'vendedor':  return '/vendedor';
+    case 'secretaria':return '/secretaria';
+    case 'finanzas':  return '/admin/finanzas';
+    case 'contenido': return '/admin/productos';
+    case 'cliente':   return '/';
+    default:          return '/';
+  }
+}
 
 export default function LoginPage() {
   const { signIn, signInWithGoogle } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') || '/';
+  const redirect = searchParams.get('redirect') || '';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,25 +39,46 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  // Obtiene el rol desde Firestore y navega al destino correcto
+  async function navigateAfterLogin(uid: string) {
+    // Si hay redirect explícito en la URL, respetarlo
+    if (redirect && redirect !== '/') {
+      window.location.href = redirect;
+      return;
+    }
+
+    // Sino, buscar el rol en Firestore para ir a la pantalla correcta
+    try {
+      const { getDoc, doc } = await import('firebase/firestore');
+      const { db } = await import('@/lib/firebase/config');
+      const userSnap = await getDoc(doc(db, 'users', uid));
+      const role = userSnap.data()?.role as UserRole | undefined;
+      window.location.href = getRoleHome(role);
+    } catch {
+      // Si no se puede leer el rol, ir a inicio
+      window.location.href = '/';
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       await signIn(email, password);
-      // Smart redirect based on role if at root
-      if (redirect === '/') {
-        // Fetch role manually after login if result is void
-        const { getDoc, doc } = await import('firebase/firestore');
-        const { db } = await import('@/lib/firebase/config');
-        const userSnap = await getDoc(doc(db, 'users', (await import('@/lib/firebase/config')).auth.currentUser?.uid || ''));
-        const target = userSnap.data()?.role === 'admin' ? '/admin' : '/vendedor';
-        window.location.href = target;
+      const { auth } = await import('@/lib/firebase/config');
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        await navigateAfterLogin(uid);
       } else {
-        window.location.href = redirect;
+        window.location.href = '/';
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al iniciar sesión';
-      toast.error(msg.includes('invalid-credential') ? 'Email o contraseña incorrectos' : 'Error al iniciar sesión');
+      toast.error(
+        msg.includes('invalid-credential') || msg.includes('wrong-password')
+          ? 'Email o contraseña incorrectos'
+          : 'Error al iniciar sesión'
+      );
     } finally {
       setLoading(false);
     }
@@ -52,7 +88,13 @@ export default function LoginPage() {
     setGoogleLoading(true);
     try {
       await signInWithGoogle();
-      router.push(redirect);
+      const { auth } = await import('@/lib/firebase/config');
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        await navigateAfterLogin(uid);
+      } else {
+        router.push('/');
+      }
     } catch {
       toast.error('No se pudo iniciar sesión con Google');
     } finally {

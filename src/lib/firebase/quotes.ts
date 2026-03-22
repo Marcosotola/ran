@@ -119,3 +119,16 @@ export async function assignRandomVendor(): Promise<string | null> {
   const vendors = snap.docs;
   return vendors[Math.floor(Math.random() * vendors.length)].id;
 }
+export async function getPendingQuotesCount(): Promise<number> {
+  try {
+    const q = query(
+      collection(db, QUOTES_COL),
+      where('status', '==', 'sent')
+    );
+    const snap = await getDocs(q);
+    return snap.size;
+  } catch (error) {
+    console.error('Error fetching pending quotes count:', error);
+    return 0;
+  }
+}

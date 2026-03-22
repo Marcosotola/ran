@@ -775,25 +775,26 @@ function CreateQuoteModal({ onRefresh }: { onRefresh: () => void }) {
     if (!clientName) return toast.error('El nombre del cliente es obligatorio');
     setLoading(true);
     try {
-      const { db } = await import('@/lib/firebase/config');
-      const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
-      
-      const quoteData = {
-        clientName,
-        clientPhone,
-        clientEmail,
-        items,
-        shipping,
-        totalMaterials: totals.materials,
-        grandTotal: totals.grand,
-        status: 'sent',
-        assignedVendorId: ranUser?.uid || null,
-        createdAt: serverTimestamp(),
-        source: 'manual_admin'
-      };
+      const res = await fetch('/api/quotes/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientName,
+          clientPhone,
+          clientEmail,
+          items,
+          shipping,
+          totalMaterials: totals.materials,
+          grandTotal: totals.grand,
+          assignedVendorId: ranUser?.uid || null,
+          createdByUserId: ranUser?.uid || null,
+        }),
+      });
 
-      await addDoc(collection(db, 'quotes'), quoteData);
-      toast.success('Presupuesto creado con éxito');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al crear el presupuesto');
+
+      toast.success('✅ Presupuesto creado y notificaciones enviadas');
       setOpen(false);
       onRefresh();
       // Reset

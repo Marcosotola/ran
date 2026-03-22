@@ -45,8 +45,8 @@ export default function MiPerfilPage() {
       setDisplayName(ranUser.displayName || '');
       setPhone(ranUser.phone || '');
       setEmail(ranUser.email || '');
-      // Notificaciones desde Firestore (si existe el campo)
-      setNotificationsEnabled(!!ranUser.fcmToken);
+      // Notificaciones desde Firestore: verificamos si hay algún token registrado
+      setNotificationsEnabled(!!ranUser.fcmTokens?.length || !!ranUser.fcmToken);
     }
   }, [ranUser]);
 
@@ -88,7 +88,7 @@ export default function MiPerfilPage() {
     if (checked) {
       setLoading(true);
       try {
-        const token = await requestNotificationPermission(ranUser.uid);
+        const token = await requestNotificationPermission(ranUser.uid, ranUser.fcmTokens);
         if (token) {
           setNotificationsEnabled(true);
           toast.success('¡Notificaciones activadas!');

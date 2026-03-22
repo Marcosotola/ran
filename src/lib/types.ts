@@ -20,6 +20,8 @@ export interface RANUser {
   createdAt: Date;
   isActive: boolean;
   fcmToken?: string;
+  fcmTokens?: string[];
+  fcmLastUpdated?: string;
   notificationsEnabled?: boolean;
 }
 
@@ -160,6 +162,8 @@ export interface Subscription {
   lastPaymentDate?: Date;
   nextPaymentDate?: Date;
   amount: number; // ARS
+  checkoutUrl?: string; // Link de pago inicial
+  managementUrl?: string; // Link para gestionar suscripción (Baja/Cambios)
 }
 
 export interface ContactInfo {

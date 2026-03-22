@@ -25,7 +25,9 @@ import {
   SheetTitle, 
   SheetTrigger 
 } from '@/components/ui/sheet';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getPendingQuotesCount } from '@/lib/firebase/quotes';
+import { Badge } from '@/components/ui/badge';
 
 const adminNavItems = [
   { href: '/admin', label: 'Panel', icon: LayoutDashboard },
@@ -43,6 +45,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const { ranUser } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    // Escuchar el conteo de presupuestos pendientes cada vez que cambie la ruta 
+    // o el usuario, esto mantiene el badge actualizado sin polling excesivo
+    getPendingQuotesCount().then(setPendingCount);
+  }, [pathname, ranUser]);
 
   const NavContent = ({ mobile = false }: { mobile?: boolean }) => (
     <div className={`flex flex-col h-full ${mobile ? 'py-6 px-4' : ''}`}>
@@ -87,7 +96,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               }`}
             >
               <item.icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-ran-cerulean' : ''}`} />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {item.href === '/admin/presupuestos' && pendingCount > 0 && (
+                <Badge className="bg-red-500 text-white h-5 w-5 p-0 flex items-center justify-center rounded-full text-[10px] animate-pulse">
+                  {pendingCount}
+                </Badge>
+              )}
             </Link>
           );
         })}

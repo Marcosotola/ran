@@ -80,9 +80,15 @@ export default function UsuariosAdminPage() {
 
     getDocs(collection(db, 'users'))
       .then((snap) => {
-        const data = snap.docs.map((d) => ({ uid: d.id, ...d.data() })) as RANUser[];
-        setUsers(data);
-        setFiltered(data);
+        const devUid = process.env.NEXT_PUBLIC_DEV_UID;
+        const data = snap.docs
+          .map((d) => ({ uid: d.id, ...d.data() })) as RANUser[];
+          
+        // Filtrar para que el admin NO vea al developer ni a usuarios con rol dev
+        const filteredData = data.filter(u => u.role !== 'dev' && u.uid !== devUid);
+        
+        setUsers(filteredData);
+        setFiltered(filteredData);
       })
       .finally(() => setLoading(false));
   }, [ranUser, authLoading]);

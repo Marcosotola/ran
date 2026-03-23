@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/firebase/auth-context';
 import { getProduct } from '@/lib/firebase/products';
@@ -37,7 +37,6 @@ const MarkdownMessage = ({ content }: { content: string }) => {
         
         if (hasImage) {
           const parts = block.split(IMG_REGEX);
-          // parts will be [text_before, alt, url, text_after, ...]
           const renderedParts = [];
           for (let j = 0; j < parts.length; j += 3) {
             renderedParts.push(<span key={`text-${j}`}>{parts[j]}</span>);
@@ -78,7 +77,7 @@ interface ContactForm {
   phone: string;
 }
 
-export default function ChatPage() {
+function ChatContent() {
   const { ranUser } = useAuth();
   const isAdmin = useMemo(() => ['admin', 'vendedor', 'secretaria', 'finanzas', 'dev'].includes(ranUser?.role || ''), [ranUser]);
   
@@ -91,6 +90,28 @@ export default function ChatPage() {
   );
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [quoteAcceptedPhase, setQuoteAcceptedPhase] = useState(false);
+  const [contactForm, setContactForm] = useState<ContactForm>({
+    name: '',
+    email: '',
+    phone: '',
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [quoteDone, setQuoteDone] = useState(false);
+  const [detectedItems, setDetectedItems] = useState<QuoteItem[]>([]);
+
+  // Sync contact form when user logs in
+  useEffect(() => {
+    if (ranUser) {
+      setContactForm(prev => ({
+        ...prev,
+        name: prev.name || ranUser.displayName || '',
+        email: prev.email || ranUser.email || '',
+      }));
+    }
+  }, [ranUser]);
 
   // Al cambiar de modo o iniciar, reseteamos el mensaje de bienvenida adecuado
   useEffect(() => {
@@ -100,18 +121,6 @@ export default function ChatPage() {
     
     setMessages([{ role: 'assistant', content: welcome, timestamp: new Date() }]);
   }, [chatMode]);
-
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [quoteAcceptedPhase, setQuoteAcceptedPhase] = useState(false);
-  const [contactForm, setContactForm] = useState<ContactForm>({
-    name: ranUser?.displayName ?? '',
-    email: ranUser?.email ?? '',
-    phone: '',
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [quoteDone, setQuoteDone] = useState(false);
-  const [detectedItems, setDetectedItems] = useState<QuoteItem[]>([]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -130,50 +139,35 @@ export default function ChatPage() {
     }
   }, [messages, loading]);
 
-  useEffect(() => {
-    if (productId) {
-      getProduct(productId).then((p) => {
-        if (p) handleSend(`Hola, me interesa el ${p.name}. ¿Es adecuado para un living de alto tránsito?`);
-      });
-    }
-  }, [productId]);
-
   const detectQuotesInResponse = (text: string): QuoteItem[] => {
-    // We remove the strict requirement for 'PRESUPUESTO_GENERADO:' 
-    // because if the advisor writes [MATERIAL], we WANT to catch it.
-    if (!text.includes('[MATERIAL]') && !text.includes('Producto:')) return [];
+    if (!text.includes('[MATERIAL]') && !text.match(/Producto:/i)) return [];
     
     const items: QuoteItem[] = [];
 
-    // Lighter, more flexible regex for numbers that might have dots or commas
     const num = (v?: string) => {
       if (!v) return 0;
-      // Remove $ and non-numeric chars except . and ,
       const cleaned = v.replace(/[^\d.,]/g, '');
       if (cleaned.includes(',') && cleaned.includes('.')) {
-        // Likely thousands dot and decimal comma like 1.234,56
         return parseFloat(cleaned.replace(/\./g, '').replace(',', '.'));
       }
       return parseFloat(cleaned.replace(',', '.')) || 0;
     };
 
-    // New multi-material logic with more robust split
     const parts = text.split(/\[MATERIAL\]/i);
-    parts.shift(); // Remove content before first [MATERIAL]
+    parts.shift();
 
     for (const p of parts) {
       try {
         const content = p.split(/\[FIN_MATERIAL\]/i)[0];
         const lines = content.split('\n').map(l => l.trim());
-        
-        // Use more liberal matching
         const findVal = (key: string) => lines.find(l => l.toLowerCase().includes(key.toLowerCase()))?.split(':')[1]?.trim() || '';
         
         const name = findVal('Producto');
-        const m2 = num(findVal('m2_cliente'));
-        const boxes = parseInt(findVal('Cajas').replace(/\D/g, '')) || 0;
-        const price = num(findVal('Precio_caja'));
-        const subtotal = num(findVal('Subtotal'));
+        const m2 = num(findVal('m2_cliente') || findVal('m2'));
+        const boxesText = findVal('Cajas').replace(/\D/g, '');
+        const boxes = boxesText ? parseInt(boxesText) : 0;
+        const price = num(findVal('Precio_caja') || findVal('Precio'));
+        const subtotal = num(findVal('Subtotal') || findVal('Total'));
 
         if (name && (boxes > 0 || m2 > 0)) {
           items.push({
@@ -191,12 +185,11 @@ export default function ChatPage() {
       }
     }
 
-    // Fallback for old single-line format if no [MATERIAL] blocks found
     if (items.length === 0) {
       const nameMatch = text.match(/Producto:\s*([^\n]+)/i)?.[1];
-      const m2Match = text.match(/m2_cliente:\s*([\d.,]+)/i)?.[1];
-      const boxesMatch = text.match(/Cajas:\s*(\d+)/)?.[1];
-      const priceMatch = text.match(/Precio_caja:\s*\$?\s*([\d.,]+)/i)?.[1];
+      const m2Match = text.match(/m2(?:_cliente)?:\s*([\d.,]+)/i)?.[1];
+      const boxesMatch = text.match(/Cajas:\s*(\d+)/i)?.[1];
+      const priceMatch = text.match(/Precio(?:_caja)?:\s*\$?\s*([\d.,]+)/i)?.[1];
 
       if (nameMatch && (boxesMatch || m2Match)) {
         const boxes = parseInt(boxesMatch || '0');
@@ -216,11 +209,13 @@ export default function ChatPage() {
     return items;
   };
 
-  const handleSend = async (overrideText?: string) => {
+  const handleSend = async (overrideText?: string, currentMessages?: ChatMessage[]) => {
     const text = (overrideText ?? input).trim();
     if (!text || loading) return;
 
     const userMsg: ChatMessage = { role: 'user', content: text, timestamp: new Date() };
+    const activeMessages = currentMessages ?? messages;
+    
     setMessages((prev) => [...prev, userMsg]);
     if (!overrideText) setInput('');
     setLoading(true);
@@ -230,12 +225,14 @@ export default function ChatPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
+          messages: [...activeMessages, userMsg].map((m) => ({ role: m.role, content: m.content })),
           userName: ranUser?.displayName || '',
           userRole: ranUser?.role || 'cliente',
           mode: chatMode,
         }),
       });
+      
+      if (!res.ok) throw new Error('Error en el servicio de chat');
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
@@ -249,13 +246,31 @@ export default function ChatPage() {
       if ((lower.includes('nombre') || lower.includes('email') || lower.includes('teléfono') || lower.includes('whatsapp')) && !quoteAcceptedPhase) {
         setQuoteAcceptedPhase(true);
       }
-    } catch (err) {
-      toast.error('Error de conexión');
+    } catch (err: any) {
+      toast.error(err.message || 'Error de conexión');
     } finally {
       setLoading(false);
       inputRef.current?.focus();
     }
   };
+
+  useEffect(() => {
+    if (productId && messages.length > 0) {
+      getProduct(productId).then((p) => {
+        if (p) {
+          const promoText = `Hola, me interesa el ${p.name}. ¿Es adecuado para un living de alto tránsito?`;
+          // COMPROBAR SI YA ESTÁ MARCADO COMO USADO (para no repetir en re-render)
+          const alreadyUsedRefKey = "used_" + productId;
+          const alreadyRequested = messages.some(m => m.userMeta === alreadyUsedRefKey);
+          
+          if (!alreadyRequested && messages.length === 1) {
+            setMessages(prev => prev.map(m => ({ ...m, userMeta: alreadyUsedRefKey })));
+            handleSend(promoText, messages);
+          }
+        }
+      });
+    }
+  }, [productId, messages.length]);
 
   const totals = useMemo(() => detectedItems.reduce((acc, item) => acc + item.subtotal, 0), [detectedItems]);
 
@@ -298,14 +313,14 @@ export default function ChatPage() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       {/* Header */}
-      <div className={`${isAdmin ? 'bg-slate-900' : 'bg-[#1B2A4A]'} py-6 shadow-md z-10 transition-colors`}>
-        <div className="container mx-auto px-4 flex justify-between items-center">
+      <div className={`${isAdmin ? 'bg-slate-900' : 'bg-[#1B2A4A]'} py-4 md:py-6 shadow-md z-10 transition-colors`}>
+        <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-4">
             <div className={`h-12 w-12 rounded-2xl ${isAdmin ? 'bg-blue-600' : 'ran-gradient'} flex items-center justify-center shadow-lg transition-all`}>
               {isAdmin ? <BarChart3 className="h-6 w-6 text-white" /> : <Sparkles className="h-6 w-6 text-white" />}
             </div>
             <div>
-              <h1 className="text-xl font-black text-white flex items-center gap-2">
+              <h1 className="text-lg md:text-xl font-black text-white flex items-center gap-2">
                 {chatMode === 'management' ? 'Control de Gestión' : 'Asesoría Técnica'} 
                 <Badge className={chatMode === 'management' ? "bg-blue-500/20 text-blue-400" : "bg-green-500/20 text-green-400"}>
                   {chatMode === 'management' ? 'BI Admin' : 'Asesor'}
@@ -317,11 +332,11 @@ export default function ChatPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4 flex-wrap justify-center">
             {isAdmin && (
-              <div className="hidden md:flex bg-black/20 p-1 rounded-xl items-center">
+              <div className="flex bg-black/20 p-1 rounded-xl items-center shrink-0">
                 <Button 
-                  variant={chatMode === 'technical' ? 'default' : 'ghost'} 
+                  variant={chatMode === 'technical' ? 'secondary' : 'ghost'} 
                   size="sm" 
                   onClick={() => setChatMode('technical')}
                   className={`rounded-lg font-bold text-[10px] ${chatMode === 'technical' ? 'bg-white text-slate-900 shadow-sm' : 'text-white/40'}`}
@@ -329,7 +344,7 @@ export default function ChatPage() {
                   MODO VENTAS
                 </Button>
                 <Button 
-                  variant={chatMode === 'management' ? 'default' : 'ghost'} 
+                  variant={chatMode === 'management' ? 'secondary' : 'ghost'} 
                   size="sm" 
                   onClick={() => setChatMode('management')}
                   className={`rounded-lg font-bold text-[10px] ${chatMode === 'management' ? 'bg-blue-600 text-white shadow-sm' : 'text-white/40'}`}
@@ -343,6 +358,7 @@ export default function ChatPage() {
         </div>
       </div>
 
+      {/* Messages Container */}
       <div ref={containerRef} className="flex-1 container mx-auto px-4 py-8 max-w-4xl overflow-y-auto">
         <div className="space-y-8">
           {messages.map((msg, i) => (
@@ -414,6 +430,7 @@ export default function ChatPage() {
         </div>
       </div>
 
+      {/* Input Section */}
       <div className="bg-white/80 backdrop-blur-md border-t p-6 sticky bottom-0">
         <div className="container mx-auto max-w-3xl flex flex-col gap-3">
           {detectedItems.length > 0 && !quoteDone && (
@@ -441,5 +458,13 @@ export default function ChatPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen animate-pulse bg-slate-100 flex items-center justify-center font-bold text-slate-400">Cargando Chat...</div>}>
+      <ChatContent />
+    </Suspense>
   );
 }

@@ -90,6 +90,7 @@ export interface ChatMessage {
   role: ChatRole;
   content: string;
   timestamp: Date;
+  userMeta?: string; // Optional field for tracking specific interactions (e.g. productId)
 }
 
 export interface ChatSession {

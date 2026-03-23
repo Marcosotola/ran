@@ -2,10 +2,14 @@
   "name": "RAN Pisos & Revestimientos",
   "short_name": "RAN",
   "description": "Paneles de gestión y catálogo interactivo de Pisos & Revestimientos",
-  "start_url": "/",
+  "id": "/?source=pwa",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#1B2A4A",
   "theme_color": "#1B2A4A",
+  "categories": ["business", "shopping"],
   "icons": [
     {
       "src": "/icon-192.png",

@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/firebase/auth-context';
+import { usePWAInstall } from '@/lib/hooks/usePWAInstall';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -90,31 +91,17 @@ export function Navbar() {
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
   const [showiOSModal, setShowiOSModal] = useState(false);
+  const { isInstallable, isInstalled, handleInstall } = usePWAInstall();
 
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);
     };
 
-    // Detect PWA status
     if (typeof window !== 'undefined') {
-      if (window.matchMedia('(display-mode: standalone)').matches) {
-        setIsInstalled(true);
-      }
-      
-      const handleBeforeInstallPrompt = (e: any) => {
-        e.preventDefault();
-        setDeferredPrompt(e);
-      };
-
-      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.addEventListener('scroll', handleScroll);
-      
       return () => {
-        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
         window.removeEventListener('scroll', handleScroll);
       };
     }
@@ -124,24 +111,22 @@ export function Navbar() {
     // Detección estricta de Apple Móvil (iPhone/iPad) donde la instalación es MANUAL
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     
-    // Si tenemos el prompt nativo (Android/Windows/Chrome en cualquier SO)
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setDeferredPrompt(null);
-        setIsInstalled(true);
-      }
-      return;
-    }
-
-    // Si es un dispositivo móvil Apple (iPhone/iPad), mostramos los pasos específicos
+    // Si es un dispositivo móvil Apple (iPhone/iPad), mostramos los pasos específicos siempre (porque Safari no soporta prompt nativo)
     if (isIOS) {
       setShowiOSModal(true);
       return;
     }
 
-    // Si es Windows, Android o Mac (con Chrome/Edge) y el prompt aún no saltó:
+    // Si es Android/Windows/Chrome y el navegador ya capturó el permiso de instalabilidad
+    if (isInstallable) {
+      const success = await handleInstall();
+      if (!success) {
+        toast.info('La instalación fue cancelada.');
+      }
+      return;
+    }
+
+    // Fallback si por algún motivo no podemos instalar directamente pero no es Apple
     toast.info('Buscá el icono de "Instalar APP" en la barra de direcciones o en el menú de tu navegador.');
   };
 
@@ -261,11 +246,19 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  {!isInstalled && (
-                    <DropdownMenuItem onClick={handleInstallClick} className="flex items-center gap-2 cursor-pointer text-[#3B82C4] font-bold">
-                      <Download className="h-4 w-4" /> Instalar Aplicación
-                    </DropdownMenuItem>
-                  )}
+                  {/* Lógica de visibilidad inteligente para la instalación: Solo si es instalable Y el usuario está logueado */}
+                  {(() => {
+                    const isIOS = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+                    
+                    if (!isInstalled && ranUser && (isInstallable || isIOS)) {
+                      return (
+                        <DropdownMenuItem onClick={handleInstallClick} className="flex items-center gap-2 cursor-pointer text-[#3B82C4] font-bold">
+                          <Download className="h-4 w-4" /> Instalar Aplicación
+                        </DropdownMenuItem>
+                      );
+                    }
+                    return null;
+                  })()}
                   <DropdownMenuItem onClick={() => logOut()} className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive">
                     <LogOut className="h-4 w-4" /> Cerrar Sesión
                   </DropdownMenuItem>
@@ -376,15 +369,22 @@ export function Navbar() {
 
                       <p className="px-4 text-[11px] font-bold text-white/30 uppercase tracking-[0.2em] mb-2">Mi Cuenta</p>
                       
-                      {!isInstalled && (
-                        <button 
-                          onClick={() => { handleInstallClick(); setMobileOpen(false); }} 
-                          className="flex items-center gap-3 px-4 py-3 text-ran-cerulean hover:bg-ran-cerulean/10 rounded-lg transition-colors w-full text-left"
-                        >
-                          <Download className="h-5 w-5" /> 
-                          <span className="text-base font-bold">Instalar Aplicación</span>
-                        </button>
-                      )}
+                      {(() => {
+                        const isIOS = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+                        
+                        if (!isInstalled && ranUser && (isInstallable || isIOS)) {
+                          return (
+                            <button 
+                              onClick={() => { handleInstallClick(); setMobileOpen(false); }} 
+                              className="flex items-center gap-3 px-4 py-3 text-ran-cerulean hover:bg-ran-cerulean/10 rounded-lg transition-colors w-full text-left"
+                            >
+                              <Download className="h-5 w-5" /> 
+                              <span className="text-base font-bold">Instalar Aplicación</span>
+                            </button>
+                          );
+                        }
+                        return null;
+                      })()}
 
                       <Link href={getDashboardUrl(ranUser.role)} onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg transition-colors">
                         <LayoutDashboard className="h-5 w-5 opacity-70" /> 

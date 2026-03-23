@@ -246,11 +246,11 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  {/* Lógica de visibilidad inteligente para la instalación: Solo si es instalable Y el usuario está logueado */}
+                  {/* Lógica de visibilidad: Siempre que el usuario esté logueado y no esté instalada, lo mostramos */}
                   {(() => {
                     const isIOS = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
                     
-                    if (!isInstalled && ranUser && (isInstallable || isIOS)) {
+                    if (!isInstalled && ranUser) {
                       return (
                         <DropdownMenuItem onClick={handleInstallClick} className="flex items-center gap-2 cursor-pointer text-[#3B82C4] font-bold">
                           <Download className="h-4 w-4" /> Instalar Aplicación
@@ -372,7 +372,7 @@ export function Navbar() {
                       {(() => {
                         const isIOS = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
                         
-                        if (!isInstalled && ranUser && (isInstallable || isIOS)) {
+                        if (!isInstalled && ranUser) {
                           return (
                             <button 
                               onClick={() => { handleInstallClick(); setMobileOpen(false); }} 

@@ -149,6 +149,29 @@
   h1, h2, h3, h4, h5, h6 {
     @apply text-ran-navy;
   }
+
+  /* Fix for inputs and placeholders visibility across all browsers */
+  input, textarea, select {
+    @apply text-foreground;
+    color: inherit;
+  }
+  
+  ::placeholder {
+    color: oklch(0.55 0.02 240) !important; /* Matches --muted-foreground */
+    opacity: 1 !important; /* Firefox fix: force full opacity */
+  }
+  
+  /* Specific browser prefix support to ensure consistency */
+  input::-webkit-input-placeholder, 
+  textarea::-webkit-input-placeholder {
+    color: oklch(0.55 0.02 240) !important;
+    opacity: 1 !important;
+  }
+
+  /* Support for dark mode if needed in the future */
+  .dark ::placeholder {
+    color: oklch(0.63 0.03 240) !important;
+  }
 }
 
 /* ========= RAN Custom Utilities ========= */

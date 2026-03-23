@@ -264,11 +264,22 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  {!isInstalled && (
-                    <DropdownMenuItem onClick={handleInstallClick} className="flex items-center gap-2 cursor-pointer text-[#3B82C4] font-bold">
-                      <Download className="h-4 w-4" /> Instalar Aplicación
-                    </DropdownMenuItem>
-                  )}
+                  {/* Lógica de visibilidad inteligente para la instalación */}
+                  {(() => {
+                    const isIOS = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+                    const isSafariMac = typeof navigator !== 'undefined' && /Macintosh/.test(navigator.userAgent) && !/Chrome|Edg/.test(navigator.userAgent);
+                    const isApple = isIOS || isSafariMac;
+
+                    // Mostramos el botón si es Apple (indicaciones) o si es otro sistema y ya tenemos el prompt directo
+                    if (!isInstalled && (isApple || deferredPrompt)) {
+                      return (
+                        <DropdownMenuItem onClick={handleInstallClick} className="flex items-center gap-2 cursor-pointer text-[#3B82C4] font-bold">
+                          <Download className="h-4 w-4" /> Instalar Aplicación
+                        </DropdownMenuItem>
+                      );
+                    }
+                    return null;
+                  })()}
                   <DropdownMenuItem onClick={() => logOut()} className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive">
                     <LogOut className="h-4 w-4" /> Cerrar Sesión
                   </DropdownMenuItem>
@@ -379,15 +390,24 @@ export function Navbar() {
 
                       <p className="px-4 text-[11px] font-bold text-white/30 uppercase tracking-[0.2em] mb-2">Mi Cuenta</p>
                       
-                      {!isInstalled && (
-                        <button 
-                          onClick={() => { handleInstallClick(); setMobileOpen(false); }} 
-                          className="flex items-center gap-3 px-4 py-3 text-ran-cerulean hover:bg-ran-cerulean/10 rounded-lg transition-colors w-full text-left"
-                        >
-                          <Download className="h-5 w-5" /> 
-                          <span className="text-base font-bold">Instalar Aplicación</span>
-                        </button>
-                      )}
+                      {(() => {
+                        const isIOS = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+                        const isSafariMac = typeof navigator !== 'undefined' && /Macintosh/.test(navigator.userAgent) && !/Chrome|Edg/.test(navigator.userAgent);
+                        const isApple = isIOS || isSafariMac;
+
+                        if (!isInstalled && (isApple || deferredPrompt)) {
+                          return (
+                            <button 
+                              onClick={() => { handleInstallClick(); setMobileOpen(false); }} 
+                              className="flex items-center gap-3 px-4 py-3 text-ran-cerulean hover:bg-ran-cerulean/10 rounded-lg transition-colors w-full text-left"
+                            >
+                              <Download className="h-5 w-5" /> 
+                              <span className="text-base font-bold">Instalar Aplicación</span>
+                            </button>
+                          );
+                        }
+                        return null;
+                      })()}
 
                       <Link href={getDashboardUrl(ranUser.role)} onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg transition-colors">
                         <LayoutDashboard className="h-5 w-5 opacity-70" /> 

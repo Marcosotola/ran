@@ -121,12 +121,10 @@ export function Navbar() {
   }, []);
 
   const handleInstallClick = async () => {
-    // Detección refinada de Apple
+    // Detección estricta de Apple Móvil (iPhone/iPad) donde la instalación es MANUAL
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const isSafariMac = /Macintosh/.test(navigator.userAgent) && !/Chrome|Edg/.test(navigator.userAgent);
-    const isApple = isIOS || isSafariMac;
-
-    // Si tenemos el prompt nativo (Android/Windows/Chrome)
+    
+    // Si tenemos el prompt nativo (Android/Windows/Chrome en cualquier SO)
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
@@ -137,15 +135,14 @@ export function Navbar() {
       return;
     }
 
-    // Si es Apple, mostramos sus instrucciones específicas
-    if (isApple) {
+    // Si es un dispositivo móvil Apple (iPhone/iPad), mostramos los pasos específicos
+    if (isIOS) {
       setShowiOSModal(true);
       return;
     }
 
-    // Caso fallback para otros navegadores que no lanzaron prompt 
-    // pero no son Apple (ej. Chrome en modo invitado o Firefox)
-    toast.info('Buscá el icono de instalación (pantallita con flecha) en la barra de direcciones de tu navegador.');
+    // Si es Windows, Android o Mac (con Chrome/Edge) y el prompt aún no saltó:
+    toast.info('Buscá el icono de "Instalar APP" en la barra de direcciones o en el menú de tu navegador.');
   };
 
   const initials = ranUser?.displayName
@@ -264,22 +261,11 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  {/* Lógica de visibilidad inteligente para la instalación */}
-                  {(() => {
-                    const isIOS = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
-                    const isSafariMac = typeof navigator !== 'undefined' && /Macintosh/.test(navigator.userAgent) && !/Chrome|Edg/.test(navigator.userAgent);
-                    const isApple = isIOS || isSafariMac;
-
-                    // Mostramos el botón si es Apple (indicaciones) o si es otro sistema y ya tenemos el prompt directo
-                    if (!isInstalled && (isApple || deferredPrompt)) {
-                      return (
-                        <DropdownMenuItem onClick={handleInstallClick} className="flex items-center gap-2 cursor-pointer text-[#3B82C4] font-bold">
-                          <Download className="h-4 w-4" /> Instalar Aplicación
-                        </DropdownMenuItem>
-                      );
-                    }
-                    return null;
-                  })()}
+                  {!isInstalled && (
+                    <DropdownMenuItem onClick={handleInstallClick} className="flex items-center gap-2 cursor-pointer text-[#3B82C4] font-bold">
+                      <Download className="h-4 w-4" /> Instalar Aplicación
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => logOut()} className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive">
                     <LogOut className="h-4 w-4" /> Cerrar Sesión
                   </DropdownMenuItem>
@@ -390,24 +376,15 @@ export function Navbar() {
 
                       <p className="px-4 text-[11px] font-bold text-white/30 uppercase tracking-[0.2em] mb-2">Mi Cuenta</p>
                       
-                      {(() => {
-                        const isIOS = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
-                        const isSafariMac = typeof navigator !== 'undefined' && /Macintosh/.test(navigator.userAgent) && !/Chrome|Edg/.test(navigator.userAgent);
-                        const isApple = isIOS || isSafariMac;
-
-                        if (!isInstalled && (isApple || deferredPrompt)) {
-                          return (
-                            <button 
-                              onClick={() => { handleInstallClick(); setMobileOpen(false); }} 
-                              className="flex items-center gap-3 px-4 py-3 text-ran-cerulean hover:bg-ran-cerulean/10 rounded-lg transition-colors w-full text-left"
-                            >
-                              <Download className="h-5 w-5" /> 
-                              <span className="text-base font-bold">Instalar Aplicación</span>
-                            </button>
-                          );
-                        }
-                        return null;
-                      })()}
+                      {!isInstalled && (
+                        <button 
+                          onClick={() => { handleInstallClick(); setMobileOpen(false); }} 
+                          className="flex items-center gap-3 px-4 py-3 text-ran-cerulean hover:bg-ran-cerulean/10 rounded-lg transition-colors w-full text-left"
+                        >
+                          <Download className="h-5 w-5" /> 
+                          <span className="text-base font-bold">Instalar Aplicación</span>
+                        </button>
+                      )}
 
                       <Link href={getDashboardUrl(ranUser.role)} onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-lg transition-colors">
                         <LayoutDashboard className="h-5 w-5 opacity-70" /> 

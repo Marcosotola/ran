@@ -121,9 +121,12 @@ export function Navbar() {
   }, []);
 
   const handleInstallClick = async () => {
+    // Detección refinada de Apple
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const isMac = /Macintosh/.test(navigator.userAgent);
+    const isSafariMac = /Macintosh/.test(navigator.userAgent) && !/Chrome|Edg/.test(navigator.userAgent);
+    const isApple = isIOS || isSafariMac;
 
+    // Si tenemos el prompt nativo (Android/Windows/Chrome)
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
@@ -131,11 +134,18 @@ export function Navbar() {
         setDeferredPrompt(null);
         setIsInstalled(true);
       }
-    } else if (isIOS || isMac) {
-      setShowiOSModal(true);
-    } else {
-      toast.info('Para instalar en este navegador, usa el menú de opciones (tres puntos) y elige \"Instalar aplicación\"');
+      return;
     }
+
+    // Si es Apple, mostramos sus instrucciones específicas
+    if (isApple) {
+      setShowiOSModal(true);
+      return;
+    }
+
+    // Caso fallback para otros navegadores que no lanzaron prompt 
+    // pero no son Apple (ej. Chrome en modo invitado o Firefox)
+    toast.info('Buscá el icono de instalación (pantallita con flecha) en la barra de direcciones de tu navegador.');
   };
 
   const initials = ranUser?.displayName

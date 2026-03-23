@@ -282,18 +282,18 @@ export default function ProductDetailPage() {
             </div>
 
             {/* CTAs */}
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-4 pt-2">
               <Button
-                className="flex-1 ran-gradient text-white border-0 hover:opacity-90 h-12 font-semibold"
+                className="flex-[2] ran-gradient text-white border-0 hover:opacity-95 h-14 font-black text-base shadow-lg shadow-ran-cerulean/20 active:scale-[0.98] transition-all"
                 asChild
               >
                 <Link href={`/chat?producto=${product.id}`}>
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Consultar con IA
+                  <MessageSquare className="h-5 w-5 mr-3" />
+                  Asesoramiento en línea
                 </Link>
               </Button>
-              <Button variant="outline" className="flex-1 h-12" asChild>
-                <Link href="/catalogo">Ver más productos</Link>
+              <Button variant="outline" className="flex-1 h-14 border-slate-200 text-slate-500 font-bold hover:bg-slate-50" asChild>
+                <Link href="/catalogo">Ver otros</Link>
               </Button>
             </div>
           </div>

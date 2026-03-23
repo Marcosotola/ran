@@ -84,10 +84,23 @@ export default function ChatPage() {
   
   const searchParams = useSearchParams();
   const productId = searchParams.get('producto');
+  const initialMode = searchParams.get('mode') as 'technical' | 'management' | null;
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'assistant', content: isAdmin ? 'Hola. Soy tu Analista de Gestión. ¿Qué métricas o datos del negocio necesitás revisar hoy?' : WELCOME, timestamp: new Date() },
-  ]);
+  const [chatMode, setChatMode] = useState<'technical' | 'management'>(
+    (initialMode === 'management' && isAdmin) ? 'management' : 'technical'
+  );
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  // Al cambiar de modo o iniciar, reseteamos el mensaje de bienvenida adecuado
+  useEffect(() => {
+    const welcome = chatMode === 'management' 
+      ? 'Hola. Soy tu Analista de Gestión. ¿Qué métricas o datos del negocio necesitás revisar hoy?'
+      : WELCOME;
+    
+    setMessages([{ role: 'assistant', content: welcome, timestamp: new Date() }]);
+  }, [chatMode]);
+
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [quoteAcceptedPhase, setQuoteAcceptedPhase] = useState(false);
@@ -220,6 +233,7 @@ export default function ChatPage() {
           messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
           userName: ranUser?.displayName || '',
           userRole: ranUser?.role || 'cliente',
+          mode: chatMode,
         }),
       });
       const data = await res.json();
@@ -292,17 +306,40 @@ export default function ChatPage() {
             </div>
             <div>
               <h1 className="text-xl font-black text-white flex items-center gap-2">
-                {isAdmin ? 'Control de Gestión' : 'Asesoría Técnica'} 
-                <Badge className={isAdmin ? "bg-blue-500/20 text-blue-400" : "bg-green-500/20 text-green-400"}>
-                  {isAdmin ? 'BI Admin' : 'Asesor'}
+                {chatMode === 'management' ? 'Control de Gestión' : 'Asesoría Técnica'} 
+                <Badge className={chatMode === 'management' ? "bg-blue-500/20 text-blue-400" : "bg-green-500/20 text-green-400"}>
+                  {chatMode === 'management' ? 'BI Admin' : 'Asesor'}
                 </Badge>
               </h1>
               <p className="text-white/50 text-xs">
-                {isAdmin ? 'Inteligencia de Negocios RAN' : 'Especialista en Revestimientos'}
+                {chatMode === 'management' ? 'Inteligencia de Negocios RAN' : 'Especialista en Revestimientos'}
               </p>
             </div>
           </div>
-          <Button variant="ghost" className="text-white/60 hover:text-white" onClick={() => window.location.href = '/'}>Salir</Button>
+
+          <div className="flex items-center gap-4">
+            {isAdmin && (
+              <div className="hidden md:flex bg-black/20 p-1 rounded-xl items-center">
+                <Button 
+                  variant={chatMode === 'technical' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => setChatMode('technical')}
+                  className={`rounded-lg font-bold text-[10px] ${chatMode === 'technical' ? 'bg-white text-slate-900 shadow-sm' : 'text-white/40'}`}
+                >
+                  MODO VENTAS
+                </Button>
+                <Button 
+                  variant={chatMode === 'management' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => setChatMode('management')}
+                  className={`rounded-lg font-bold text-[10px] ${chatMode === 'management' ? 'bg-blue-600 text-white shadow-sm' : 'text-white/40'}`}
+                >
+                  MODO GESTIÓN
+                </Button>
+              </div>
+            )}
+            <Button variant="ghost" className="text-white/60 hover:text-white" onClick={() => window.location.href = '/'}>Salir</Button>
+          </div>
         </div>
       </div>
 
@@ -390,7 +427,7 @@ export default function ChatPage() {
           <div className="flex gap-3">
             <Input 
               ref={inputRef}
-              placeholder={isAdmin ? "Consultá ingresos, egresos, stock o rendimiento..." : "Consultá por m², stock o modelos..."}
+              placeholder={chatMode === 'management' ? "Consultá ingresos, egresos, stock o rendimiento..." : "Consultá por m², stock o modelos..."}
               className="h-16 rounded-3xl border-slate-200 px-6 text-lg focus:ring-2 focus:ring-[#3B82C4] transition-all"
               value={input}
               onChange={e => setInput(e.target.value)}

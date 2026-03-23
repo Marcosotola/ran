@@ -246,14 +246,22 @@ function EditSaleModal({ sale, onRefresh }: { sale: Sale, onRefresh: () => void 
         </Button>
       </DialogTrigger>
       <DialogContent className="fixed inset-0 z-50 w-screen h-[100dvh] max-w-none sm:max-w-none m-0 rounded-none p-0 overflow-y-auto border-0 translate-x-0 translate-y-0 flex flex-col bg-white">
-        <div className="bg-white border-b p-6 sticky top-0 z-10 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="rounded-full"><ChevronLeft className="h-6 w-6" /></Button>
-            <DialogTitle className="text-2xl font-black text-slate-900 uppercase tracking-tight italic">Modificar Venta <span className="text-blue-400">#{sale.id?.slice(-5)}</span></DialogTitle>
+        <div className="bg-white border-b p-4 sm:p-6 sticky top-0 z-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+            <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="rounded-full shrink-0">
+              <ChevronLeft className="h-6 w-6" />
+            </Button>
+            <DialogTitle className="text-lg sm:text-2xl font-black text-slate-900 uppercase tracking-tight italic truncate">
+              Modificar Venta <span className="text-blue-400">#{sale.id?.slice(-5)}</span>
+            </DialogTitle>
           </div>
-          <Button onClick={handleUpdate} disabled={loading} className="ran-gradient h-14 px-10 text-white font-black rounded-2xl shadow-lg">
-            {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <CheckCircle2 className="h-6 w-6 mr-2" />}
-            GUARDAR TODAS LAS CORRECCIONES
+          <Button 
+            onClick={handleUpdate} 
+            disabled={loading} 
+            className="ran-gradient h-12 sm:h-14 w-full sm:w-auto px-6 sm:px-10 text-white font-black rounded-xl sm:rounded-2xl shadow-lg text-sm sm:text-base"
+          >
+            {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="h-5 w-5 mr-2" />}
+            GUARDAR CAMBIOS
           </Button>
         </div>
 
@@ -341,22 +349,27 @@ function EditSaleModal({ sale, onRefresh }: { sale: Sale, onRefresh: () => void 
                 </tbody>
               </table>
               
-              <div className="bg-[#1B2A4A] text-white p-8 border-t-8 border-white/5 flex flex-col md:flex-row justify-between items-center">
-                <div className="flex flex-col md:flex-row gap-8 items-center">
+              <div className="bg-[#1B2A4A] text-white p-6 sm:p-8 border-t-8 border-white/5 flex flex-col sm:flex-row justify-between items-center gap-8">
+                <div className="flex flex-col sm:flex-row gap-6 sm:gap-10 w-full sm:w-auto items-center sm:items-start text-center sm:text-left">
                   <div className="space-y-1">
                     <p className="text-[10px] font-black uppercase text-white/30 tracking-widest leading-none">Costo de Flete</p>
-                    <Input 
-                      type="number" 
-                      value={shipping || ''} 
-                      onFocus={(e) => e.target.select()}
-                      onChange={e => setShipping(parseFloat(e.target.value) || 0)} 
-                      className="bg-transparent border-0 h-10 p-0 text-3xl font-black text-blue-400 w-32 focus:ring-0 transition-all" 
-                    />
+                    <div className="flex items-center justify-center sm:justify-start">
+                      <span className="text-white/20 font-black mr-1">$</span>
+                      <Input 
+                        type="number" 
+                        value={shipping || ''} 
+                        onFocus={(e) => e.target.select()}
+                        onChange={e => setShipping(parseFloat(e.target.value) || 0)} 
+                        className="bg-transparent border-0 h-10 p-0 text-2xl sm:text-3xl font-black text-blue-400 w-32 focus:ring-0 transition-all text-center sm:text-left" 
+                      />
+                    </div>
                   </div>
-                  <div className="w-px h-12 bg-white/10 hidden md:block" />
+                  
+                  <div className="hidden sm:block w-px h-12 bg-white/10 self-center" />
+                  
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase text-white/30 tracking-widest leading-none">Total de Venta</p>
-                    <p className="text-5xl font-black text-white">{formatARS(total)}</p>
+                    <p className="text-[10px] font-black uppercase text-white/30 tracking-widest leading-none">Total Percibido</p>
+                    <p className="text-3xl sm:text-5xl font-black text-white">{formatARS(total)}</p>
                   </div>
                 </div>
               </div>
@@ -440,14 +453,20 @@ function CreateSaleModal({ onRefresh }: { onRefresh: () => void }) {
         </Button>
       </DialogTrigger>
       <DialogContent className="fixed inset-0 z-50 w-screen h-[100dvh] max-w-none sm:max-w-none m-0 rounded-none p-0 overflow-y-auto border-0 translate-x-0 translate-y-0 flex flex-col bg-white">
-        <div className="bg-white border-b p-6 sticky top-0 z-10 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="rounded-full"><ChevronLeft className="h-6 w-6" /></Button>
-            <DialogTitle className="text-2xl font-black text-slate-900 uppercase tracking-tight">Nueva Venta</DialogTitle>
+        <div className="bg-white border-b p-4 sm:p-6 sticky top-0 z-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+            <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="rounded-full shrink-0">
+              <ChevronLeft className="h-6 w-6" />
+            </Button>
+            <DialogTitle className="text-lg sm:text-2xl font-black text-slate-900 uppercase tracking-tight truncate">Nueva Venta</DialogTitle>
           </div>
-          <Button onClick={handleSave} disabled={loading} className="ran-gradient h-14 px-10 text-white font-black rounded-2xl shadow-lg">
-            {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <CheckCircle2 className="h-6 w-6 mr-2" />}
-            CONFIRMAR Y FINALIZAR VENTA
+          <Button 
+            onClick={handleSave} 
+            disabled={loading} 
+            className="ran-gradient h-12 sm:h-14 w-full sm:w-auto px-6 sm:px-10 text-white font-black rounded-xl sm:rounded-2xl shadow-lg text-sm sm:text-base"
+          >
+            {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="h-5 w-5 mr-2" />}
+            FINALIZAR VENTA
           </Button>
         </div>
 
@@ -557,30 +576,32 @@ function CreateSaleModal({ onRefresh }: { onRefresh: () => void }) {
               </div>
             </div>
 
-            <div className="bg-[#1B2A4A] text-white p-12 rounded-[50px] shadow-2xl flex flex-col md:flex-row justify-between items-center border-4 border-white/5">
-              <div className="flex flex-col md:flex-row gap-12 items-center mb-8 md:mb-0">
-                <div className="space-y-3 text-center md:text-left">
+            <div className="bg-[#1B2A4A] text-white p-6 sm:p-12 rounded-[32px] sm:rounded-[50px] shadow-2xl flex flex-col sm:flex-row justify-between items-center border-4 border-white/5 gap-8">
+              <div className="flex flex-col sm:flex-row gap-6 sm:gap-12 w-full sm:w-auto items-center sm:items-start">
+                <div className="space-y-2 text-center sm:text-left">
                   <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Costo de Flete</p>
-                  <div className="relative">
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 text-white/20 font-black text-2xl">$</span>
+                  <div className="relative flex items-center justify-center sm:justify-start">
+                    <span className="text-white/20 font-black text-xl">$</span>
                     <Input 
                       type="number" 
                       value={shipping || ''} 
                       onFocus={(e) => e.target.select()}
                       onChange={e => setShipping(parseFloat(e.target.value) || 0)} 
-                      className="bg-transparent border-0 h-10 p-0 pl-6 text-3xl font-black text-blue-400 w-40 focus:ring-0 transition-all" 
+                      className="bg-transparent border-0 h-10 p-0 pl-2 text-2xl sm:text-3xl font-black text-blue-400 w-32 focus:ring-0 transition-all text-center sm:text-left" 
                     />
                   </div>
                 </div>
-                <div className="w-px h-16 bg-white/10 hidden md:block" />
-                <div className="space-y-1 text-center md:text-left">
+                <div className="w-px h-16 bg-white/10 hidden sm:block self-center" />
+                <div className="space-y-1 text-center sm:text-left">
                   <p className="text-[10px] font-black uppercase text-white/30 tracking-widest leading-none">Subtotal Materiales</p>
-                  <p className="text-3xl font-black">{formatARS(total - shipping)}</p>
+                  <p className="text-2xl sm:text-3xl font-black text-white/90">{formatARS(total - shipping)}</p>
                 </div>
               </div>
-              <div className="text-center md:text-right">
-                <p className="text-[10px] font-black uppercase text-white/30 tracking-[0.3em] mb-4">Monto Final Cobrado</p>
-                <p className="text-8xl font-black leading-none tracking-tighter">{formatARS(total)}</p>
+              <div className="text-center sm:text-right w-full sm:w-auto pt-6 sm:pt-0 border-t sm:border-0 border-white/10">
+                <p className="text-[10px] font-black uppercase text-white/30 tracking-[0.2em] mb-2 sm:mb-4">Monto Final Cobrado</p>
+                <p className="text-4xl sm:text-7xl md:text-8xl font-black leading-none tracking-tighter break-all">
+                  {formatARS(total)}
+                </p>
               </div>
             </div>
 

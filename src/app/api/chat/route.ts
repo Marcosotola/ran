@@ -9,7 +9,7 @@ const genAI = new GoogleGenAI({
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { messages, context, userName, userRole = 'cliente' } = body;
+    const { messages, context, userName, userRole = 'cliente', mode } = body;
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ message: "Configura la KEY de Gemini." });
@@ -22,8 +22,13 @@ export async function POST(req: NextRequest) {
     }
 
     const privilegedRoles = ['admin', 'vendedor', 'secretaria', 'finanzas', 'dev'];
-    const isAdminMode = privilegedRoles.includes(userRole);
-    const canSeePrices = isAdminMode;
+    const hasPrivileges = privilegedRoles.includes(userRole);
+    
+    // El modo se determina por el parámetro 'mode' o por el rol si no se especifica
+    // 'management' -> Analista de BI (solo para privileged)
+    // 'technical'  -> Asesor de ventas (para todos)
+    const effectiveMode = (mode === 'management' && hasPrivileges) ? 'management' : 'technical';
+    const canSeePrices = hasPrivileges;
 
     // 2. Fetch Base Data (Always products)
     const [productsSnap, settingsSnap] = await Promise.all([
@@ -33,13 +38,13 @@ export async function POST(req: NextRequest) {
 
     const products = productsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
     
-    // 3. Fetch Advanced Data if Admin Mode
+    // 3. Fetch Advanced Data if Management Mode
     let salesSummary = '';
     let expensesSummary = '';
     let leadsSummary = '';
     let usersSummary = '';
 
-    if (isAdminMode) {
+    if (effectiveMode === 'management') {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -80,7 +85,7 @@ export async function POST(req: NextRequest) {
     // 4. Determine Persona
     let SYSTEM_PROMPT = '';
 
-    if (isAdminMode) {
+    if (effectiveMode === 'management') {
       SYSTEM_PROMPT = `Eres el "Analista de Gestión de RAN", un experto en Business Intelligence, analista de datos y auditor interno.
 Tu función es asistir al Administrador y al equipo comercial en la interpretación de las métricas del negocio.
 

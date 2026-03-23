@@ -15,6 +15,7 @@ import {
   BarChart3,
   Upload,
   Menu as MenuIcon,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth-context';
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,7 @@ const adminNavItems = [
   { href: '/admin/finanzas', label: 'Finanzas', icon: TrendingUp },
   { href: '/admin/egresos', label: 'Egresos', icon: TrendingDown },
   { href: '/admin/subir-productos', label: 'Subir Productos', icon: Upload },
+  { href: '/chat?mode=management', label: 'Chat IA', icon: Sparkles },
   { href: '/admin/ajustes', label: 'Ajustes', icon: Settings },
 ];
 

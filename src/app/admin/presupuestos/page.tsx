@@ -818,12 +818,18 @@ function CreateQuoteModal({ onRefresh }: { onRefresh: () => void }) {
         </Button>
       </DialogTrigger>
       <DialogContent className="fixed inset-0 z-50 w-screen h-[100dvh] max-w-none sm:max-w-none m-0 rounded-none p-0 overflow-y-auto border-0 translate-x-0 translate-y-0 flex flex-col bg-white">
-        <div className="bg-slate-50 border-b p-6 sticky top-0 z-10 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setOpen(false)}><ChevronLeft className="h-6 w-6" /></Button>
-            <DialogTitle className="text-2xl font-black">Nuevo Presupuesto</DialogTitle>
+        <div className="bg-slate-50 border-b p-4 sm:p-6 sticky top-0 z-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+            <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="shrink-0">
+              <ChevronLeft className="h-6 w-6" />
+            </Button>
+            <DialogTitle className="text-lg sm:text-2xl font-black truncate">Nuevo Presupuesto</DialogTitle>
           </div>
-          <Button onClick={handleCreate} disabled={loading} className="ran-gradient h-12 px-8 text-white font-black rounded-xl">
+          <Button 
+            onClick={handleCreate} 
+            disabled={loading} 
+            className="ran-gradient h-12 w-full sm:w-auto px-8 text-white font-black rounded-xl shadow-md"
+          >
             {loading ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
             REGISTRAR PRESUPUESTO
           </Button>
@@ -912,31 +918,38 @@ function CreateQuoteModal({ onRefresh }: { onRefresh: () => void }) {
               </div>
             </div>
 
-            {/* Totals */}
-            <div className="bg-[#1B2A4A] p-8 rounded-3xl text-white flex justify-between items-center shadow-2xl">
-              <div className="flex gap-10">
-                <div>
+            {/* Totals Section */}
+            <div className="bg-[#1B2A4A] p-6 sm:p-8 rounded-[32px] text-white flex flex-col sm:flex-row justify-between items-center gap-8 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-ran-gradient opacity-50" />
+              
+              <div className="flex flex-col sm:flex-row gap-6 sm:gap-10 w-full sm:w-auto items-center sm:items-start text-center sm:text-left">
+                <div className="space-y-1">
                   <p className="text-[10px] text-white/30 font-black uppercase tracking-widest">Flete Estimado</p>
-                  <div className="relative mt-1">
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 text-white/20 font-black">$</span>
+                  <div className="relative flex items-center justify-center sm:justify-start">
+                    <span className="text-white/20 font-black mr-1">$</span>
                     <Input 
                       type="number" 
                       value={shipping || ''} 
                       onFocus={(e) => e.target.select()}
                       onChange={e => setShipping(parseFloat(e.target.value) || 0)} 
-                      className="bg-transparent border-0 text-2xl font-black p-0 focus:ring-0 pl-4 w-32 h-8 transition-all" 
+                      className="bg-transparent border-0 text-xl sm:text-2xl font-black p-0 focus:ring-0 w-32 h-8 text-center sm:text-left selection:bg-blue-500/30" 
                     />
                   </div>
                 </div>
-                <div className="w-px h-10 bg-white/10 self-center" />
-                <div>
-                  <p className="text-[10px] text-white/30 font-black uppercase tracking-widest">Subtotal Galón</p>
-                  <p className="text-2xl font-black">{formatARS(totals.materials)}</p>
+                
+                <div className="hidden sm:block w-px h-12 bg-white/10 self-center" />
+                
+                <div className="space-y-1">
+                  <p className="text-[10px] text-white/30 font-black uppercase tracking-widest">Materiales (Subtotal)</p>
+                  <p className="text-xl sm:text-2xl font-black text-white/90">{formatARS(totals.materials)}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] text-white/30 font-black uppercase tracking-widest">Presupuesto Total</p>
-                <p className="text-6xl font-black text-blue-400 leading-none">{formatARS(totals.grand)}</p>
+
+              <div className="text-center sm:text-right w-full sm:w-auto pt-6 sm:pt-0 border-t sm:border-0 border-white/10">
+                <p className="text-[10px] text-white/30 font-black uppercase tracking-widest mb-1">Presupuesto Total Final</p>
+                <p className="text-4xl sm:text-6xl font-black text-blue-400 tracking-tighter leading-none break-all">
+                  {formatARS(totals.grand)}
+                </p>
               </div>
             </div>
           </div>

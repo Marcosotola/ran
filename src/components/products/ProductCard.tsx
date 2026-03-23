@@ -90,9 +90,9 @@ export function ProductCard({ product }: ProductCardProps) {
               className="flex-1 h-9 border-ran-cerulean/30 hover:bg-ran-cerulean/10 hover:border-ran-cerulean text-ran-cerulean font-bold text-[10px]"
               asChild
             >
-              <Link href={`/chat?producto=${product.id}`} title="Consultar con un asesor">
+              <Link href={`/chat?producto=${product.id}`} title="Consultar con el asistente IA">
                 <MessageSquare className="h-3.5 w-3.5 mr-1" />
-                Asesor
+                Chat
               </Link>
             </Button>
           </div>

@@ -363,10 +363,10 @@ export function Navbar() {
                 <div className="pt-2">
                   {!ranUser ? (
                     <div className="flex flex-col gap-3">
-                      <Button variant="outline" className="w-full text-white border-white/20 hover:bg-white/10 py-6 text-lg" asChild onClick={() => setMobileOpen(false)}>
+                      <Button variant="outline" className="w-full text-white border-white/30 bg-white/5 hover:bg-white/10 py-7 text-lg font-black uppercase tracking-tight" asChild onClick={() => setMobileOpen(false)}>
                         <Link href="/auth/login">Ingresar</Link>
                       </Button>
-                      <Button className="w-full ran-gradient text-white border-0 py-6 text-lg" asChild onClick={() => setMobileOpen(false)}>
+                      <Button className="w-full ran-gradient text-white border-0 py-7 text-lg font-black uppercase tracking-tight shadow-xl shadow-black/20" asChild onClick={() => setMobileOpen(false)}>
                         <Link href="/auth/register">Registrarse</Link>
                       </Button>
                     </div>

@@ -12,20 +12,29 @@ export function usePWAInstall() {
       if (window.matchMedia('(display-mode: standalone)').matches) {
         setIsInstalled(true);
       }
+
+      // 1.5. Verificar si el evento fue capturado globalmente antes de que el hook monte
+      if ((window as any).deferredPWAInstallPrompt) {
+        setDeferredPrompt((window as any).deferredPWAInstallPrompt);
+        console.log('PWA: Recuperado evento previo de window.');
+      }
     }
 
-    // 2. Capturar el evento de instalación
+    // 2. Capturar el evento de instalación (por si ocurre después de montar)
     const handleBeforeInstallPrompt = (e: any) => {
       // Prevenir el banner automático del navegador
       e.preventDefault();
       // Guardar el evento para dispararlo luego
       setDeferredPrompt(e);
-      console.log('PWA: beforeinstallprompt capturado y guardado.');
+      // También guardar en window para consistencia
+      (window as any).deferredPWAInstallPrompt = e;
+      console.log('PWA: beforeinstallprompt capturado en el hook.');
     };
 
     // 3. Detectar cuando se completa la instalación
     const handleAppInstalled = () => {
       setDeferredPrompt(null);
+      (window as any).deferredPWAInstallPrompt = null;
       setIsInstalled(true);
       console.log('PWA: Instalación completada con éxito.');
     };

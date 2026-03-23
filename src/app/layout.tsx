@@ -55,6 +55,13 @@ export default function RootLayout({
                   });
                 });
               }
+
+              // Captura global del evento de instalación
+              window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                window.deferredPWAInstallPrompt = e;
+                console.log('PWA: Evento beforeinstallprompt capturado globalmente.');
+              });
             `,
           }}
         />

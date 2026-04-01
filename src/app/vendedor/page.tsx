@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import Link from 'next/link';
 import { 
   FileText, 
   Mail, 
@@ -137,7 +138,7 @@ export default function VendedorPage() {
               <p className="text-slate-500 font-medium italic">Mis presupuestos y leads asignados</p>
             </div>
             
-            <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 w-full md:w-auto">
               <div className="bg-white rounded-2xl border border-border p-4 shadow-sm min-w-[180px]">
                 <span className="text-[10px] font-black uppercase text-muted-foreground block mb-1">En Seguimiento</span>
                 <div className="text-2xl font-black text-[#3B82C4]">{stats.pendingCount}</div>
@@ -146,6 +147,13 @@ export default function VendedorPage() {
                 <span className="text-[10px] font-black uppercase text-muted-foreground block mb-1">Mis Ventas (Total)</span>
                 <div className="text-2xl font-black text-green-600">{formatARS(stats.totalValue)}</div>
               </div>
+              <Link href="/admin/mensajes" className="bg-white rounded-2xl border border-border p-4 shadow-sm min-w-[180px] hover:bg-slate-50 transition-colors group">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase text-muted-foreground block mb-1">Consultas Sitio</span>
+                  <MessageSquare className="h-3 w-3 text-ran-cerulean group-hover:scale-125 transition-transform" />
+                </div>
+                <div className="text-2xl font-black text-ran-navy uppercase">Ver Mensajes</div>
+              </Link>
             </div>
           </div>
 

@@ -16,6 +16,7 @@ import {
   Upload,
   Menu as MenuIcon,
   Sparkles,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth-context';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ const adminNavItems = [
   { href: '/admin/productos', label: 'Productos', icon: Package },
   { href: '/admin/presupuestos', label: 'Presupuestos', icon: FileText },
   { href: '/admin/ventas', label: 'Ventas', icon: ShoppingCart },
+  { href: '/admin/mensajes', label: 'Mensajes', icon: MessageSquare },
   { href: '/admin/finanzas', label: 'Finanzas', icon: TrendingUp },
   { href: '/admin/egresos', label: 'Egresos', icon: TrendingDown },
   { href: '/admin/subir-productos', label: 'Subir Productos', icon: Upload },

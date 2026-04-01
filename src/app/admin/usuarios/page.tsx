@@ -213,98 +213,100 @@ export default function UsuariosAdminPage() {
         </div>
       ) : (
         <div className="bg-card rounded-2xl border border-border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Usuario</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell">Registrado</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Rol</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Estado</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filtered.map((user) => (
-                <tr key={user.uid} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3">
-                    <div>
-                      <p className="font-semibold truncate max-w-36">{user.displayName ?? '—'}</p>
-                      <p className="text-xs text-muted-foreground truncate max-w-36">{user.email}</p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
-                    {user.createdAt ? formatDate(user.createdAt as any) : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      {updatingId === user.uid ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Select
-                          value={user.role}
-                          onValueChange={(v) => changeRole(user.uid, v as UserRole)}
-                        >
-                          <SelectTrigger className="h-7 w-32 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ROLES.map((r) => (
-                              <SelectItem key={r} value={r} className="text-xs">
-                                {ROLE_LABELS[r]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => toggleActive(user.uid, user.isActive ?? true)}
-                      className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-                        user.isActive === false
-                           ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                           : 'bg-green-100 text-green-700 hover:bg-green-200'
-                      }`}
-                    >
-                      {user.isActive === false ? 'Inactivo' : 'Activo'}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50" onClick={() => handleEdit(user)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:bg-red-50">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta acción eliminará el registro de <strong>{user.displayName}</strong> ({user.email}). 
-                              No se borrará la cuenta de autenticación de Firebase (debe hacerse desde la consola), 
-                              pero ya no aparecerá en el sistema.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(user.uid)} className="bg-red-600 hover:bg-red-700 text-white">
-                              Eliminar
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground whitespace-nowrap">Usuario</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell whitespace-nowrap">Registrado</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground whitespace-nowrap">Rol</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground whitespace-nowrap">Estado</th>
+                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground whitespace-nowrap">Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filtered.map((user) => (
+                  <tr key={user.uid} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="min-w-[150px]">
+                        <p className="font-semibold truncate max-w-36">{user.displayName ?? '—'}</p>
+                        <p className="text-xs text-muted-foreground truncate max-w-36">{user.email}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell whitespace-nowrap">
+                      {user.createdAt ? formatDate(user.createdAt as any) : '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {updatingId === user.uid ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Select
+                            value={user.role}
+                            onValueChange={(v) => changeRole(user.uid, v as UserRole)}
+                          >
+                            <SelectTrigger className="h-7 w-32 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ROLES.map((r) => (
+                                <SelectItem key={r} value={r} className="text-xs">
+                                  {ROLE_LABELS[r]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => toggleActive(user.uid, user.isActive ?? true)}
+                        className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
+                          user.isActive === false
+                             ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                             : 'bg-green-100 text-green-700 hover:bg-green-200'
+                        }`}
+                      >
+                        {user.isActive === false ? 'Inactivo' : 'Activo'}
+                      </button>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50" onClick={() => handleEdit(user)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+  
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:bg-red-50">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción eliminará el registro de <strong>{user.displayName}</strong> ({user.email}). 
+                                No se borrará la cuenta de autenticación de Firebase (debe hacerse desde la consola), 
+                                pero ya no aparecerá en el sistema.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(user.uid)} className="bg-red-600 hover:bg-red-700 text-white">
+                                Eliminar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {/* Edit Dialog */}
           <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>

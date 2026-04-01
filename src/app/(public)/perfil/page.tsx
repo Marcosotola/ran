@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/lib/firebase/auth-context';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { updateUser } from '@/lib/firebase/users';
 import { toast } from 'sonner';
 import { 
@@ -252,14 +253,14 @@ export default function MiPerfilPage() {
 
                 <div className="pt-4 border-t space-y-4">
                   <h6 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Mi Actividad</h6>
-                  <div className="flex items-center justify-between group cursor-pointer">
-                    <span className="text-sm font-bold text-slate-600 group-hover:text-ran-navy transition-colors">Historial de Ventas</span>
+                  <Link href="/perfil/consultas" className="flex items-center justify-between group cursor-pointer">
+                    <span className="text-sm font-bold text-slate-600 group-hover:text-ran-navy transition-colors">Mis Consultas</span>
                     <ChevronRight className="h-4 w-4 text-slate-300" />
-                  </div>
-                  <div className="flex items-center justify-between group cursor-pointer">
-                    <span className="text-sm font-bold text-slate-600 group-hover:text-ran-navy transition-colors">Mis Cotizaciones</span>
+                  </Link>
+                  <Link href="/perfil/presupuestos" className="flex items-center justify-between group cursor-pointer">
+                    <span className="text-sm font-bold text-slate-600 group-hover:text-ran-navy transition-colors">Mis Presupuestos</span>
                     <ChevronRight className="h-4 w-4 text-slate-300" />
-                  </div>
+                  </Link>
                 </div>
               </CardContent>
             </Card>

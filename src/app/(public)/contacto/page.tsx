@@ -18,8 +18,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { subscribeToSettings, AppSettings } from '@/lib/firebase/settings';
+import { useAuth } from '@/lib/firebase/auth-context';
+import { sendContactMessage } from '@/lib/firebase/messages';
 
 export default function ContactoPage() {
+  const { ranUser } = useAuth();
   const [settings, setSettings] = useState<AppSettings | null>(null);
 
   useEffect(() => {
@@ -39,13 +42,10 @@ export default function ContactoPage() {
     setSubmitting(true);
 
     try {
-      const res = await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+      await sendContactMessage({
+        ...formData,
+        userId: ranUser?.uid || undefined,
       });
-
-      if (!res.ok) throw new Error('Error al enviar el mensaje');
 
       toast.success('¡Mensaje enviado con éxito! Nos contactaremos a la brevedad.');
       setFormData({ name: '', lastName: '', email: '', message: '' });

@@ -11,6 +11,14 @@ export const metadata: Metadata = {
   description:
     'Descubrí nuestra amplia selección de pisos y revestimientos cerámicos. Catálogo online, asesoramiento personalizado y presupuestos al instante con IA.',
   keywords: ['pisos', 'revestimientos', 'cerámicos', 'porcellanato', 'RAN', 'presupuesto'],
+  icons: {
+    icon: [
+      { url: '/icon-192.png', type: 'image/png' }
+    ],
+    apple: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' }
+    ],
+  },
   openGraph: {
     title: 'RAN Pisos & Revestimientos',
     description: 'Catálogo online de pisos y revestimientos cerámicos con asesoría IA',
@@ -39,10 +47,10 @@ export default function RootLayout({
           rel="stylesheet"
         />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/icon-180.png" />
-        <meta name="theme-color" content="#1B2A4A" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta name="theme-color" content="#ffffff" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

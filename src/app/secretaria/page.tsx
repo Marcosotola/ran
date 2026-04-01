@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Loader2, Search, FileText, Plus, Receipt } from 'lucide-react';
+import { Loader2, Search, FileText, Plus, Receipt, MessageSquare } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -224,7 +225,7 @@ export default function SecretariaPage() {
 
         <div className="container mx-auto px-4 py-8 space-y-6">
           {/* KPIs */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-card rounded-2xl border border-border p-4 text-center">
               <div className="text-3xl font-black mb-1">{quotes.length}</div>
               <div className="text-xs text-muted-foreground">Total presupuestos</div>
@@ -239,6 +240,13 @@ export default function SecretariaPage() {
               <div className="text-2xl font-black mb-1">{formatARS(totalAccepted)}</div>
               <div className="text-xs text-muted-foreground">Total vendido</div>
             </div>
+            <Link href="/admin/mensajes" className="bg-white rounded-2xl border border-border p-4 text-center hover:bg-slate-50 transition-colors shadow-sm group">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <MessageSquare className="h-4 w-4 text-ran-cerulean group-hover:scale-110 transition-transform" />
+                <div className="text-xl font-black text-ran-navy uppercase">Ver Mensajes</div>
+              </div>
+              <div className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Consultas del Sitio</div>
+            </Link>
           </div>
 
           {/* Search */}
@@ -252,35 +260,39 @@ export default function SecretariaPage() {
             <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-[#3B82C4]" /></div>
           ) : (
             <div className="bg-card rounded-2xl border border-border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground">N° Presupuesto</th>
-                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Cliente</th>
-                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell">Fecha</th>
-                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Monto</th>
-                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Estado</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {filtered.map(q => (
-                    <tr key={q.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs">{formatQuoteNumber(q.id ?? '')}</td>
-                      <td className="px-4 py-3">
-                        <p className="font-semibold truncate max-w-32">{q.clientName}</p>
-                        <p className="text-xs text-muted-foreground truncate max-w-32">{q.clientEmail}</p>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs hidden sm:table-cell">
-                        {q.createdAt ? formatDate(q.createdAt as any) : '—'}
-                      </td>
-                      <td className="px-4 py-3 font-bold">{formatARS(q.grandTotal)}</td>
-                      <td className="px-4 py-3">
-                        <Badge className={`text-xs ${STATUS_STYLES[q.status] ?? ''}`}>{STATUS_LABELS[q.status] ?? q.status}</Badge>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/50">
+                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground whitespace-nowrap">N° Presupuesto</th>
+                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground whitespace-nowrap">Cliente</th>
+                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell whitespace-nowrap">Fecha</th>
+                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground whitespace-nowrap">Monto</th>
+                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground whitespace-nowrap">Estado</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filtered.map(q => (
+                      <tr key={q.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs whitespace-nowrap">{formatQuoteNumber(q.id ?? '')}</td>
+                        <td className="px-4 py-3">
+                          <div className="min-w-[120px]">
+                            <p className="font-semibold truncate max-w-32">{q.clientName}</p>
+                            <p className="text-xs text-muted-foreground truncate max-w-32">{q.clientEmail}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs hidden sm:table-cell whitespace-nowrap">
+                          {q.createdAt ? formatDate(q.createdAt as any) : '—'}
+                        </td>
+                        <td className="px-4 py-3 font-bold whitespace-nowrap">{formatARS(q.grandTotal)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <Badge className={`text-xs ${STATUS_STYLES[q.status] ?? ''}`}>{STATUS_LABELS[q.status] ?? q.status}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               {filtered.length === 0 && (
                 <div className="py-12 text-center text-muted-foreground">
                   <FileText className="h-8 w-8 mx-auto mb-2 opacity-30" />

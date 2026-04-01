@@ -93,7 +93,7 @@ export default function AdminDashboardPage() {
         const [products, quotes, usersSnap] = await Promise.all([
           getProducts({}),
           getAllQuotes(),
-          getCountFromServer(collection(db, 'users')),
+          getCountFromServer(query(collection(db, 'users'), where('role', '!=', 'dev'))),
         ]);
 
         const activeProducts = products.filter((p) => p.isActive).length;

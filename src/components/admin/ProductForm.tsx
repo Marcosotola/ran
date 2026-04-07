@@ -38,8 +38,10 @@ interface FormData {
   m2PerBox: string;
   piecesPerBox: string;
   stock: string;
+  stockPallets: string;
   weight: string;
   sku: string;
+  m2PerPallet: string;
 }
 
 const SIZES = ['35x35', '56x56', '18x56', '31x53', '20x50', '45x45', '60x60', '30x60'];
@@ -61,8 +63,10 @@ export default function ProductForm({ initialData }: ProductFormProps) {
     m2PerBox: initialData?.m2PerBox?.toString() || '',
     piecesPerBox: initialData?.piecesPerBox?.toString() || '',
     stock: initialData?.stock?.toString() || '0',
+    stockPallets: initialData?.stockPallets?.toString() || '0',
     weight: initialData?.weight?.toString() || '',
     sku: initialData?.sku || '',
+    m2PerPallet: initialData?.m2PerPallet?.toString() || '',
   });
 
   const [files, setFiles] = useState<File[]>([]);
@@ -157,6 +161,7 @@ export default function ProductForm({ initialData }: ProductFormProps) {
         m2PerBox: parseFloat(form.m2PerBox || '1'),
         piecesPerBox: parseInt(form.piecesPerBox || '1'),
         stock: parseInt(form.stock || '0'),
+        stockPallets: parseInt(form.stockPallets || '0'),
         images: previews.filter(p => !p.startsWith('data:')),
         isActive: initialData?.isActive ?? true,
         createdBy: initialData?.createdBy || user.uid,
@@ -164,6 +169,7 @@ export default function ProductForm({ initialData }: ProductFormProps) {
 
       if (form.weight) productData.weight = parseFloat(form.weight);
       if (form.sku) productData.sku = form.sku;
+      if (form.m2PerPallet) productData.m2PerPallet = parseFloat(form.m2PerPallet);
 
       let productId = initialData?.id;
 
@@ -312,9 +318,17 @@ export default function ProductForm({ initialData }: ProductFormProps) {
             <Label htmlFor="stock">Stock (cajas)</Label>
             <Input id="stock" type="number" placeholder="0" value={form.stock} onChange={(e) => update('stock', e.target.value)} min="0" />
           </div>
+          <div className="space-y-1 text-blue-600">
+            <Label htmlFor="stockPallets">Stock (pallets)</Label>
+            <Input id="stockPallets" type="number" placeholder="0" value={form.stockPallets} onChange={(e) => update('stockPallets', e.target.value)} min="0" className="border-blue-200 focus:ring-blue-500" />
+          </div>
           <div className="space-y-1">
             <Label htmlFor="weight">Peso por caja (kg)</Label>
             <Input id="weight" type="number" placeholder="18" value={form.weight} onChange={(e) => update('weight', e.target.value)} step="0.1" min="0" />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="m2-pallet">m² por Pallet</Label>
+            <Input id="m2-pallet" type="number" placeholder="75.84" value={form.m2PerPallet} onChange={(e) => update('m2PerPallet', e.target.value)} step="0.01" min="0" />
           </div>
         </div>
       </div>

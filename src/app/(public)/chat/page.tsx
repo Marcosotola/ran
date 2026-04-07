@@ -42,14 +42,14 @@ const MarkdownMessage = ({ content }: { content: string }) => {
             renderedParts.push(<span key={`text-${j}`}>{parts[j]}</span>);
             if (parts[j+1] !== undefined) {
               renderedParts.push(
-                <div key={`img-${j}`} className="my-3 rounded-xl overflow-hidden border border-[#3B82F6]/20 bg-muted/30 shadow-md">
+                <div key={`img-${j}`} className="my-3 rounded-xl overflow-hidden border border-[#3B82C4]/20 bg-muted/30 shadow-md">
                   <img src={parts[j+2]} alt={parts[j+1]} className="w-full aspect-video object-cover" />
                   <p className="text-[10px] text-muted-foreground px-3 py-2 italic bg-background/50">{parts[j+1]}</p>
                 </div>
               );
             }
           }
-          return <p key={i}>{renderedParts}</p>;
+          return <div key={i} className="mb-4">{renderedParts}</div>;
         }
 
         // Support bold and simple text
@@ -164,20 +164,22 @@ function ChatContent() {
         
         const name = findVal('Producto');
         const m2 = num(findVal('m2_cliente') || findVal('m2'));
-        const boxesText = findVal('Cajas').replace(/\D/g, '');
-        const boxes = boxesText ? parseInt(boxesText) : 0;
-        const price = num(findVal('Precio_caja') || findVal('Precio'));
+        const palletsText = findVal('Pallets').replace(/[^\d.]/g, '');
+        const pallets = palletsText ? parseFloat(palletsText) : 0;
+        const priceM2 = num(findVal('Precio_m2') || findVal('Precio'));
         const subtotal = num(findVal('Subtotal') || findVal('Total'));
 
-        if (name && (boxes > 0 || m2 > 0)) {
+        if (name && (pallets > 0 || m2 > 0)) {
           items.push({
             productId: 'ai-' + Math.random().toString(36).slice(2, 7),
             name,
             size: '',
             m2,
-            boxes,
-            pricePerBox: price,
-            subtotal: subtotal || (price * boxes)
+            pallets,
+            boxes: 0, // AI no longer outputs boxes by default
+            pricePerBox: 0,
+            pricePerM2: priceM2,
+            subtotal: subtotal || (priceM2 * m2)
           });
         }
       } catch (e) {
@@ -188,20 +190,23 @@ function ChatContent() {
     if (items.length === 0) {
       const nameMatch = text.match(/Producto:\s*([^\n]+)/i)?.[1];
       const m2Match = text.match(/m2(?:_cliente)?:\s*([\d.,]+)/i)?.[1];
-      const boxesMatch = text.match(/Cajas:\s*(\d+)/i)?.[1];
-      const priceMatch = text.match(/Precio(?:_caja)?:\s*\$?\s*([\d.,]+)/i)?.[1];
+      const palletsMatch = text.match(/Pallets:\s*([\d.]+)/i)?.[1];
+      const priceMatch = text.match(/Precio(?:_m2)?:\s*\$?\s*([\d.,]+)/i)?.[1];
 
-      if (nameMatch && (boxesMatch || m2Match)) {
-        const boxes = parseInt(boxesMatch || '0');
+      if (nameMatch && (palletsMatch || m2Match)) {
+        const pallets = parseFloat(palletsMatch || '0');
+        const m2 = num(m2Match);
         const price = num(priceMatch);
         items.push({
           productId: 'ai-fallback',
           name: nameMatch.trim(),
           size: '',
-          m2: num(m2Match),
-          boxes,
-          pricePerBox: price,
-          subtotal: (price * boxes) || 0
+          m2,
+          pallets,
+          boxes: 0,
+          pricePerBox: 0,
+          pricePerM2: price,
+          subtotal: (price * m2) || 0
         });
       }
     }
@@ -275,12 +280,17 @@ function ChatContent() {
   const totals = useMemo(() => detectedItems.reduce((acc, item) => acc + item.subtotal, 0), [detectedItems]);
 
   const handleAcceptQuote = async () => {
-    if (!contactForm.name || (!contactForm.email && !contactForm.phone)) {
-      toast.error('Por favor, indicá tu nombre y al menos un medio de contacto (Teléfono o Email).');
-      return;
-    }
-    setSubmitting(true);
     try {
+      if (!contactForm.name) {
+        toast.error('Por favor, ingresá tu nombre completo.');
+        return;
+      }
+      if (!contactForm.phone && !contactForm.email) {
+        toast.error('Necesitamos una forma de contactarte (WhatsApp o Email).');
+        return;
+      }
+      
+      setSubmitting(true);
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -299,7 +309,7 @@ function ChatContent() {
       toast.success('¡Presupuesto enviado!');
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: `¡Listo, ${contactForm.name}! 🎉 Hemos enviado tu solicitud a nuestro equipo. Un vendedor experto te contactará en breve al **${contactForm.phone}**.\n\n¡Muchas gracias por confiar en RAN!`,
+        content: `¡Listo, ${contactForm.name}! 🎉 Hemos enviado tu solicitud a nuestro equipo. Un vendedor experto te contactará en breve al **${contactForm.phone || contactForm.email}**.\n\n¡Muchas gracias por confiar en RAN!`,
         timestamp: new Date()
       }]);
       setQuoteAcceptedPhase(false);
@@ -321,7 +331,7 @@ function ChatContent() {
             </div>
             <div>
               <h1 className="text-lg md:text-xl font-black text-white flex items-center gap-2">
-                {chatMode === 'management' ? 'Control de Gestión' : 'Asesoría Técnica'} 
+                {chatMode === 'technical' ? 'Asesoría Técnica' : 'Control de Gestión'} 
                 <Badge className={chatMode === 'management' ? "bg-blue-500/20 text-blue-400" : "bg-green-500/20 text-green-400"}>
                   {chatMode === 'management' ? 'BI Admin' : 'Asesor'}
                 </Badge>
@@ -383,7 +393,7 @@ function ChatContent() {
                         <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
                           <div>
                             <p className="font-black text-slate-800 text-sm leading-none mb-1">{it.name}</p>
-                            <p className="text-[10px] text-slate-400 font-bold">{it.m2} m² • {it.boxes} cajas</p>
+                            <p className="text-[10px] text-slate-400 font-bold">{it.m2} m² {it.pallets ? `• ${it.pallets} pallets` : ''}</p>
                           </div>
                           <p className="font-black text-[#1B2A4A]">{it.subtotal > 0 ? formatARS(it.subtotal) : 'A COTIZAR'}</p>
                         </div>
@@ -416,10 +426,36 @@ function ChatContent() {
                 <p className="text-slate-500 text-sm">Necesitamos unos datos mínimos para que un vendedor pueda enviarte el presupuesto formal.</p>
               </div>
               <div className="space-y-4">
-                <Input placeholder="Nombre Completo" className="h-14 rounded-2xl border-slate-200 text-lg" value={contactForm.name} onChange={e => setContactForm(f => ({...f, name: e.target.value}))} />
-                <Input placeholder="Email (opcional)" className="h-14 rounded-2xl border-slate-200 text-lg" value={contactForm.email} onChange={e => setContactForm(f => ({...f, email: e.target.value}))} />
-                <Input placeholder="WhatsApp / Teléfono" className="h-14 rounded-2xl border-slate-200 text-lg font-bold" value={contactForm.phone} onChange={e => setContactForm(f => ({...f, phone: e.target.value}))} />
-                <Button className="w-full h-16 ran-gradient text-white font-black text-xl rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all" onClick={handleAcceptQuote} disabled={submitting}>
+                <div className="space-y-1">
+                  <Input 
+                    placeholder="Nombre Completo *" 
+                    className={`h-14 rounded-2xl text-lg ${!contactForm.name ? 'border-amber-200 focus:border-amber-400 shadow-sm' : 'border-slate-200'}`} 
+                    value={contactForm.name} 
+                    onChange={e => setContactForm(f => ({...f, name: e.target.value}))} 
+                  />
+                  {!contactForm.name && <p className="text-[10px] text-amber-600 font-bold px-2">Este campo es obligatorio</p>}
+                </div>
+                
+                <div className="pt-2">
+                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-2 px-2">Medio de contacto (al menos uno)</p>
+                  <div className="space-y-3">
+                    <Input 
+                      placeholder="WhatsApp / Teléfono" 
+                      className={`h-14 rounded-2xl text-lg font-bold ${(!contactForm.phone && !contactForm.email) ? 'border-amber-200' : 'border-slate-200'}`} 
+                      value={contactForm.phone} 
+                      onChange={e => setContactForm(f => ({...f, phone: e.target.value}))} 
+                    />
+                    <Input 
+                      placeholder="Email" 
+                      className={`h-14 rounded-2xl text-lg ${(!contactForm.phone && !contactForm.email) ? 'border-amber-200' : 'border-slate-200'}`} 
+                      value={contactForm.email} 
+                      onChange={e => setContactForm(f => ({...f, email: e.target.value}))} 
+                    />
+                  </div>
+                  {!contactForm.phone && !contactForm.email && <p className="text-[10px] text-amber-600 font-bold mt-2 px-2">Proporcioná al menos un medio para que te contactemos</p>}
+                </div>
+
+                <Button className="w-full h-16 ran-gradient text-white font-black text-xl rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all mt-4" onClick={handleAcceptQuote} disabled={submitting}>
                   {submitting ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2" />}
                   SOLICITAR CONTACTO COMERCIAL
                 </Button>

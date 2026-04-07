@@ -5,7 +5,8 @@ import { useAuth } from '@/lib/firebase/auth-context';
 import { useEffect, useState, useMemo } from 'react';
 import { getAllQuotes, updateQuote, updateQuoteStatus, deleteQuote } from '@/lib/firebase/quotes';
 import { getAllUsers } from '@/lib/firebase/users';
-import { Quote, QuoteStatus, PaymentMethod, QuoteItem, RANUser } from '@/lib/types';
+import { getProducts } from '@/lib/firebase/products';
+import { Quote, QuoteStatus, PaymentMethod, QuoteItem, RANUser, Product } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatARS, formatDate, formatQuoteNumber } from '@/lib/utils/calculations';
 import { Badge } from '@/components/ui/badge';
@@ -74,6 +75,7 @@ export default function PresupuestosAdminPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
+  const [catalog, setCatalog] = useState<Product[]>([]);
 
   const refreshQuotes = async () => {
     try {
@@ -81,6 +83,8 @@ export default function PresupuestosAdminPage() {
       setQuotes(q);
       const s = await getAppSettings();
       setAppSettings(s);
+      const p = await getProducts({ isActive: true });
+      setCatalog(p);
     } catch {
       toast.error('Error al cargar presupuestos');
     } finally {
@@ -129,7 +133,7 @@ export default function PresupuestosAdminPage() {
             </div>
             
             <div className="flex flex-wrap gap-3 items-stretch w-full md:w-auto">
-              <CreateQuoteModal onRefresh={refreshQuotes} />
+              <CreateQuoteModal onRefresh={refreshQuotes} catalog={catalog} />
               <div className="bg-white rounded-2xl border border-border px-6 flex flex-col justify-center min-w-[140px] h-16 shadow-sm">
                 <span className="text-[10px] font-black uppercase text-slate-400 block tracking-widest leading-none mb-1">Pendientes</span>
                 <div className="text-xl font-black text-[#3B82C4] leading-none">{stats.pendingCount}</div>
@@ -186,6 +190,7 @@ export default function PresupuestosAdminPage() {
                     onRefresh={refreshQuotes} 
                     vendorName={ranUser?.displayName || 'Admin'}
                     appSettings={appSettings}
+                    catalog={catalog}
                   />
                 ))
               )}
@@ -197,12 +202,13 @@ export default function PresupuestosAdminPage() {
   );
 }
 
-function QuoteListItem({ quote, onContact, onRefresh, vendorName, appSettings }: { 
+function QuoteListItem({ quote, onContact, onRefresh, vendorName, appSettings, catalog }: { 
   quote: Quote, 
   onContact: (q: Quote, m: 'email' | 'whatsapp') => void, 
   onRefresh: () => void,
   vendorName: string,
-  appSettings: AppSettings | null
+  appSettings: AppSettings | null,
+  catalog: Product[]
 }) {
   return (
     <div className="p-5 hover:bg-slate-50/50 transition-colors group">
@@ -235,7 +241,7 @@ function QuoteListItem({ quote, onContact, onRefresh, vendorName, appSettings }:
               <MessageCircle className="h-10 w-10 absolute" />
             </Button>
           )}
-          <QuoteDetailModal quote={quote} onRefresh={onRefresh} vendorName={vendorName} appSettings={appSettings} />
+          <QuoteDetailModal quote={quote} onRefresh={onRefresh} vendorName={vendorName} appSettings={appSettings} catalog={catalog} />
           <Button 
             variant="ghost" 
             className="!h-16 !w-16 p-0 relative text-red-300 hover:text-red-500 hover:bg-red-50 rounded-2xl shrink-0"
@@ -259,7 +265,7 @@ function QuoteListItem({ quote, onContact, onRefresh, vendorName, appSettings }:
   );
 }
 
-function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings }: { quote: Quote, onRefresh: () => void, vendorName: string, appSettings: AppSettings | null }) {
+function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings, catalog }: { quote: Quote, onRefresh: () => void, vendorName: string, appSettings: AppSettings | null, catalog: Product[] }) {
   const [open, setOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -271,6 +277,7 @@ function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings }: { quote
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
   const [assignedVendorId, setAssignedVendorId] = useState<string>(quote.assignedVendorId || '');
   const [allVendors, setAllVendors] = useState<RANUser[]>([]);
+  const [searchQuery, setSearchQuery] = useState<{ [key: number]: string }>({});
 
   // Load items into state if changed or opened
   useEffect(() => {
@@ -296,7 +303,16 @@ function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings }: { quote
   const handleUpdateItem = (index: number, updates: Partial<QuoteItem>) => {
     const newItems = [...items];
     const item = { ...newItems[index], ...updates };
-    item.subtotal = (item.boxes || 0) * (item.pricePerBox || 0);
+    
+    // Si cambia m2 o precio por m2, recalculamos subtotal
+    if ('m2' in updates || 'pricePerM2' in updates) {
+      item.subtotal = (item.m2 || 0) * (item.pricePerM2 || 0);
+    } 
+    // Si cambia cajas o precio por caja (legacy support)
+    else if ('boxes' in updates || 'pricePerBox' in updates) {
+      item.subtotal = (item.boxes || 0) * (item.pricePerBox || 0);
+    }
+    
     newItems[index] = item;
     setItems(newItems);
   };
@@ -304,11 +320,13 @@ function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings }: { quote
   const handleAddItem = () => {
     setItems([...items, {
       productId: 'manual-' + Date.now(),
-      name: 'Nuevo Producto',
+      name: '',
       size: '-',
       m2: 0,
+      pallets: 1,
       boxes: 0,
       pricePerBox: 0,
+      pricePerM2: 0,
       subtotal: 0
     }]);
   };
@@ -465,7 +483,7 @@ function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings }: { quote
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-[32px] border border-slate-200 shadow-xl overflow-hidden">
+            <div className="bg-white rounded-[32px] border border-slate-200 shadow-xl overflow-visible">
               <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl bg-slate-900 flex items-center justify-center text-white">
@@ -496,70 +514,112 @@ function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings }: { quote
                 </div>
               </div>
               
-              <div className="overflow-x-auto">
+              <div className="overflow-visible">
                 <table className="w-full text-sm">
-                  <thead className="bg-slate-50 text-[10px] uppercase font-black text-slate-400">
+                  <thead className="bg-[#E2E8F0] text-[12px] uppercase font-black text-slate-800 border-b-2 border-slate-900">
                     <tr>
-                      <th className="px-8 py-4 text-left">Descripción del Artículo</th>
-                      <th className="px-5 py-4 text-center">Metros Reales (m²)</th>
-                      <th className="px-5 py-4 text-center">Cant. de Cajas</th>
-                      <th className="px-5 py-4 text-right">Precio por Caja</th>
-                      <th className="px-8 py-4 text-right">Subtotal</th>
+                      <th className="px-8 py-4 text-left border-r border-slate-300">Nombre</th>
+                      <th className="px-5 py-4 text-center border-r border-slate-300">$ m2</th>
+                      <th className="px-5 py-4 text-center border-r border-slate-300">Pallet</th>
+                      <th className="px-5 py-4 text-center border-r border-slate-300">m2 totales</th>
+                      <th className="px-8 py-4 text-right">$ total</th>
                       {editMode && <th className="px-4 py-4 w-10"></th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {items.map((item, idx) => (
-                      <tr key={idx} className="bg-white hover:bg-slate-50 transition-colors">
-                        <td className="px-8 py-5">
+                      <tr key={idx} className="bg-white hover:bg-slate-50 transition-colors border-b border-slate-200">
+                        <td className="px-8 py-5 border-r border-slate-100 relative overflow-visible">
                           {editMode ? (
-                            <Input className="font-black text-slate-900 h-10 rounded-xl" value={item.name} onChange={(e) => handleUpdateItem(idx, { name: e.target.value })} />
+                            <div className="relative">
+                              <Input 
+                                className="font-bold text-slate-900 h-10 rounded-xl" 
+                                value={searchQuery[idx] !== undefined ? searchQuery[idx] : item.name} 
+                                placeholder="Escribí para buscar..."
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setSearchQuery(prev => ({ ...prev, [idx]: val }));
+                                  handleUpdateItem(idx, { name: val });
+                                }} 
+                                onFocus={() => setSearchQuery(prev => ({ ...prev, [idx]: searchQuery[idx] ?? item.name }))}
+                              />
+                              {searchQuery[idx] && catalog.filter(p => p.name.toLowerCase().includes(searchQuery[idx].toLowerCase())).length > 0 && (
+                                <div className="absolute top-full left-0 w-[400px] bg-white border border-slate-200 mt-2 rounded-2xl shadow-2xl z-[9999] max-h-64 overflow-y-auto ring-4 ring-blue-500/10 animate-fade-in shadow-blue-900/20">
+                                  {catalog
+                                    .filter(p => p.name.toLowerCase().includes(searchQuery[idx].toLowerCase()))
+                                    .slice(0, 5) // Optimization: only show 5
+                                    .map(p => (
+                                      <div 
+                                        key={p.id} 
+                                        className="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0"
+                                        onClick={() => {
+                                          handleUpdateItem(idx, { 
+                                            name: p.name, 
+                                            pricePerM2: p.pricePerM2,
+                                            size: p.size 
+                                          });
+                                          setSearchQuery(prev => {
+                                            const next = { ...prev };
+                                            delete next[idx];
+                                            return next;
+                                          });
+                                        }}
+                                      >
+                                        <p className="font-black text-sm text-slate-900 leading-none">{p.name}</p>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">{p.size} • {formatARS(p.pricePerM2)}/m²</p>
+                                      </div>
+                                    ))}
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             <div className="flex flex-col">
-                              <span className="font-black text-slate-900 text-lg leading-tight">{item.name}</span>
+                              <span className="font-bold text-slate-900 text-base leading-tight uppercase">{item.name}</span>
                               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{item.size || 'Medida estándar'}</span>
                             </div>
                           )}
                         </td>
-                        <td className="px-5 py-5 text-center">
+                        <td className="px-5 py-5 text-center border-r border-slate-100">
                           {editMode ? (
-                            <div className="relative w-24 mx-auto">
+                            <div className="relative w-28 mx-auto">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
                               <Input 
                                 type="number" 
-                                className="text-center font-black h-10 rounded-xl pr-6 transition-all focus:ring-2 focus:ring-[#3B82C4]" 
-                                value={item.m2 || ''} 
+                                className="text-center font-bold h-10 rounded-xl pl-5 transition-all focus:ring-2 focus:ring-[#3B82C4]" 
+                                value={item.pricePerM2 || ''} 
                                 onFocus={(e) => e.target.select()}
-                                onChange={(e) => handleUpdateItem(idx, { m2: parseFloat(e.target.value) || 0 })} 
+                                onChange={(e) => handleUpdateItem(idx, { pricePerM2: parseFloat(e.target.value) || 0 })} 
                               />
-                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">m²</span>
                             </div>
-                          ) : <span className="font-bold text-slate-700 text-base">{item.m2} m²</span>}
+                          ) : <span className="font-medium text-slate-600">{formatARS(item.pricePerM2 || 0)}</span>}
                         </td>
-                        <td className="px-5 py-5 text-center">
-                          <div className="flex items-center justify-center gap-3">
-                            {editMode && (
-                              <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200" onClick={() => handleUpdateItem(idx, { boxes: Math.max(0, item.boxes - 1) })}><Minus className="h-4 w-4 text-slate-600" /></Button>
-                            )}
-                            <span className="font-black text-slate-900 text-xl w-8 text-center">{item.boxes}</span>
-                            {editMode && (
-                              <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg bg-slate-100 hover:bg-slate-200" onClick={() => handleUpdateItem(idx, { boxes: item.boxes + 1 })}><Plus className="h-4 w-4 text-slate-600" /></Button>
-                            )}
-                          </div>
-                          {!editMode && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Cajas</p>}
-                        </td>
-                        <td className="px-5 py-5 text-right">
+                        <td className="px-5 py-5 text-center border-r border-slate-100">
                           {editMode ? (
-                            <div className="relative w-36 ml-auto">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-black">$</span>
+                            <div className="flex items-center justify-center gap-2">
+                              <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg bg-slate-100" onClick={() => handleUpdateItem(idx, { pallets: Math.max(0, (item.pallets || 0) - 1) })}><Minus className="h-4 w-4" /></Button>
                               <Input 
                                 type="number" 
-                                className="pl-7 text-right font-black h-10 rounded-xl transition-all focus:ring-2 focus:ring-[#3B82C4]" 
-                                value={item.pricePerBox || ''} 
-                                onFocus={(e) => e.target.select()}
-                                onChange={(e) => handleUpdateItem(idx, { pricePerBox: parseFloat(e.target.value) || 0 })} 
+                                className="w-16 h-10 text-center font-bold rounded-xl" 
+                                value={item.pallets || 0} 
+                                onChange={(e) => handleUpdateItem(idx, { pallets: parseFloat(e.target.value) || 0 })}
                               />
+                              <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg bg-slate-100" onClick={() => handleUpdateItem(idx, { pallets: (item.pallets || 0) + 1 })}><Plus className="h-4 w-4" /></Button>
                             </div>
-                          ) : <span className="font-bold text-slate-700 text-base">{formatARS(item.pricePerBox)}</span>}
+                          ) : <span className="font-bold text-slate-900 text-lg">{item.pallets || 0}</span>}
+                        </td>
+                        <td className="px-5 py-5 text-center border-r border-slate-100">
+                           {editMode ? (
+                             <div className="relative w-28 mx-auto">
+                               <Input 
+                                 type="number" 
+                                 className="text-center font-bold h-10 rounded-xl pr-6 transition-all focus:ring-2 focus:ring-[#3B82C4]" 
+                                 value={item.m2 || ''} 
+                                 onFocus={(e) => e.target.select()}
+                                 onChange={(e) => handleUpdateItem(idx, { m2: parseFloat(e.target.value) || 0 })} 
+                               />
+                               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">m²</span>
+                             </div>
+                           ) : <span className="font-black text-slate-900 text-lg">{item.m2?.toFixed(2)}</span>}
                         </td>
                         <td className="px-8 py-5 text-right">
                           <span className="font-black text-slate-900 text-xl leading-none">{formatARS(item.subtotal)}</span>
@@ -735,7 +795,7 @@ function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings }: { quote
   );
 }
 
-function CreateQuoteModal({ onRefresh }: { onRefresh: () => void }) {
+function CreateQuoteModal({ onRefresh, catalog }: { onRefresh: () => void, catalog: Product[] }) {
   const { ranUser } = useAuth();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -745,6 +805,7 @@ function CreateQuoteModal({ onRefresh }: { onRefresh: () => void }) {
   const [clientEmail, setClientEmail] = useState('');
   const [items, setItems] = useState<QuoteItem[]>([]);
   const [shipping, setShipping] = useState(0);
+  const [searchQuery, setSearchQuery] = useState<{ [key: number]: string }>({});
 
   const totals = useMemo(() => {
     const materials = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
@@ -754,11 +815,13 @@ function CreateQuoteModal({ onRefresh }: { onRefresh: () => void }) {
   const handleAddItem = () => {
     setItems([...items, {
       productId: 'manual-' + Date.now(),
-      name: 'Nuevo Producto',
+      name: '',
       size: '-',
       m2: 0,
+      pallets: 1,
       boxes: 0,
       pricePerBox: 0,
+      pricePerM2: 0,
       subtotal: 0
     }]);
   };
@@ -766,7 +829,16 @@ function CreateQuoteModal({ onRefresh }: { onRefresh: () => void }) {
   const handleUpdateItem = (index: number, updates: Partial<QuoteItem>) => {
     const newItems = [...items];
     const item = { ...newItems[index], ...updates };
-    item.subtotal = (item.boxes || 0) * (item.pricePerBox || 0);
+    
+    // Si cambia m2 o precio por m2, recalculamos subtotal
+    if ('m2' in updates || 'pricePerM2' in updates) {
+      item.subtotal = (item.m2 || 0) * (item.pricePerM2 || 0);
+    } 
+    // Si cambia cajas o precio por caja (legacy support)
+    else if ('boxes' in updates || 'pricePerBox' in updates) {
+      item.subtotal = (item.boxes || 0) * (item.pricePerBox || 0);
+    }
+    
     newItems[index] = item;
     setItems(newItems);
   };
@@ -854,64 +926,123 @@ function CreateQuoteModal({ onRefresh }: { onRefresh: () => void }) {
             </div>
 
             {/* Items */}
-            <div className="bg-white rounded-3xl border shadow-xl overflow-hidden">
+            <div className="bg-white rounded-3xl border shadow-xl overflow-visible">
               <div className="p-6 border-b flex justify-between items-center">
                 <h4 className="font-black text-lg">Materiales Solicitados</h4>
                 <Button variant="outline" size="sm" onClick={handleAddItem} className="rounded-xl border-dashed">
                   <Plus className="h-4 w-4 mr-2" /> AGREGAR ARTÍCULO
                 </Button>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-slate-50 text-[10px] uppercase font-black text-slate-400">
+              <div className="overflow-visible">
+                <table className="w-full text-sm">
+                  <thead className="bg-[#E2E8F0] text-[12px] uppercase font-black text-slate-800 border-b-2 border-slate-900">
                     <tr>
-                      <th className="px-6 py-4 text-left">Descripción</th>
-                      <th className="px-4 py-4 text-center">m²</th>
-                      <th className="px-4 py-4 text-center">Cajas</th>
-                      <th className="px-4 py-4 text-right">Precio/Caja</th>
-                      <th className="px-6 py-4 text-right">Subtotal</th>
+                      <th className="px-8 py-4 text-left border-r border-slate-300">Nombre</th>
+                      <th className="px-5 py-4 text-center border-r border-slate-300">$ m2</th>
+                      <th className="px-5 py-4 text-center border-r border-slate-300">Pallet</th>
+                      <th className="px-5 py-4 text-center border-r border-slate-300">m2 totales</th>
+                      <th className="px-8 py-4 text-right">$ total</th>
                       <th className="w-10"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y">
+                  <tbody className="divide-y divide-slate-100">
                     {items.map((it, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50">
-                        <td className="px-6 py-4">
-                          <Input value={it.name} onChange={e => handleUpdateItem(idx, { name: e.target.value })} className="font-bold h-10 border-0 bg-transparent focus:bg-white" />
+                      <tr key={idx} className="bg-white hover:bg-slate-50 transition-colors border-b border-slate-200">
+                        <td className="px-8 py-5 border-r border-slate-100 relative overflow-visible">
+                          <div className="relative">
+                            <Input 
+                              className="font-bold text-slate-900 h-10 rounded-xl" 
+                              value={searchQuery[idx] !== undefined ? searchQuery[idx] : it.name} 
+                              placeholder="Escribí para buscar..."
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setSearchQuery(prev => ({ ...prev, [idx]: val }));
+                                handleUpdateItem(idx, { name: val });
+                              }} 
+                              onFocus={() => setSearchQuery(prev => ({ ...prev, [idx]: searchQuery[idx] ?? it.name }))}
+                            />
+                            {searchQuery[idx] && catalog.filter(p => p.name.toLowerCase().includes(searchQuery[idx].toLowerCase())).length > 0 && (
+                              <div className="absolute top-full left-0 w-[400px] bg-white border border-slate-200 mt-2 rounded-2xl shadow-2xl z-[9999] max-h-64 overflow-y-auto ring-4 ring-blue-500/10 animate-fade-in shadow-blue-900/20">
+                                {catalog
+                                  .filter(p => p.name.toLowerCase().includes(searchQuery[idx].toLowerCase()))
+                                  .slice(0, 5) // Optimization: only show 5
+                                  .map(p => (
+                                    <div 
+                                      key={p.id} 
+                                      className="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0"
+                                      onClick={() => {
+                                        handleUpdateItem(idx, { 
+                                          name: p.name, 
+                                          pricePerM2: p.pricePerM2,
+                                          size: p.size 
+                                        });
+                                        setSearchQuery(prev => {
+                                          const next = { ...prev };
+                                          delete next[idx];
+                                          return next;
+                                        });
+                                      }}
+                                    >
+                                      <p className="font-black text-sm text-slate-900 leading-none">{p.name}</p>
+                                      <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">{p.size} • {formatARS(p.pricePerM2)}/m²</p>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
                         </td>
-                        <td className="px-4 py-4 w-24">
-                          <Input 
-                            type="number" 
-                            value={it.m2 || ''} 
-                            onFocus={(e) => e.target.select()}
-                            onChange={e => handleUpdateItem(idx, { m2: parseFloat(e.target.value) || 0 })} 
-                            className="text-center h-10 border-0 bg-transparent focus:bg-white transition-all" 
-                          />
+                        <td className="px-5 py-5 text-center border-r border-slate-100">
+                          <div className="relative w-28 mx-auto">
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
+                            <Input 
+                              type="number" 
+                              className="text-center font-bold h-10 rounded-xl pl-5 transition-all focus:ring-2 focus:ring-[#3B82C4]" 
+                              value={it.pricePerM2 || ''} 
+                              onFocus={(e) => e.target.select()}
+                              onChange={e => handleUpdateItem(idx, { pricePerM2: parseFloat(e.target.value) || 0 })} 
+                            />
+                          </div>
                         </td>
-                        <td className="px-4 py-4 w-24">
-                          <Input 
-                            type="number" 
-                            value={it.boxes || ''} 
-                            onFocus={(e) => e.target.select()}
-                            onChange={e => handleUpdateItem(idx, { boxes: parseInt(e.target.value) || 0 })} 
-                            className="text-center h-10 border-0 bg-transparent focus:bg-white font-black transition-all" 
-                          />
+                        <td className="px-5 py-5 text-center border-r border-slate-100">
+                          <div className="flex items-center justify-center gap-2">
+                            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg bg-slate-100" onClick={() => handleUpdateItem(idx, { pallets: Math.max(0, (it.pallets || 0) - 1) })}><Minus className="h-4 w-4" /></Button>
+                            <Input 
+                              type="number" 
+                              className="w-16 h-10 text-center font-bold rounded-xl" 
+                              value={it.pallets || 0} 
+                              onChange={e => handleUpdateItem(idx, { pallets: parseFloat(e.target.value) || 0 })}
+                            />
+                            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg bg-slate-100" onClick={() => handleUpdateItem(idx, { pallets: (it.pallets || 0) + 1 })}><Plus className="h-4 w-4" /></Button>
+                          </div>
                         </td>
-                        <td className="px-4 py-4 w-32">
-                          <Input 
-                            type="number" 
-                            value={it.pricePerBox || ''} 
-                            onFocus={(e) => e.target.select()}
-                            onChange={e => handleUpdateItem(idx, { pricePerBox: parseFloat(e.target.value) || 0 })} 
-                            className="text-right h-10 border-0 bg-transparent focus:bg-white font-bold transition-all" 
-                          />
+                        <td className="px-5 py-5 text-center border-r border-slate-100">
+                          <div className="relative w-28 mx-auto">
+                            <Input 
+                              type="number" 
+                              className="text-center font-bold h-10 rounded-xl pr-6 transition-all focus:ring-2 focus:ring-[#3B82C4]" 
+                              value={it.m2 || ''} 
+                              onFocus={(e) => e.target.select()}
+                              onChange={e => handleUpdateItem(idx, { m2: parseFloat(e.target.value) || 0 })} 
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">m²</span>
+                          </div>
                         </td>
-                        <td className="px-6 py-4 text-right font-black text-[#1B2A4A]">{formatARS(it.subtotal)}</td>
-                        <td><Button size="icon" variant="ghost" className="text-red-300 hover:text-red-500" onClick={() => setItems(items.filter((_, i) => i !== idx))}><X className="h-4 w-4" /></Button></td>
+                        <td className="px-8 py-5 text-right font-black text-slate-900 text-xl leading-none">
+                          {formatARS(it.subtotal)}
+                        </td>
+                        <td className="px-4 py-5 text-center">
+                          <Button size="icon" variant="ghost" className="h-9 w-9 text-red-300 hover:text-red-500 hover:bg-red-50" onClick={() => setItems(items.filter((_, i) => i !== idx))}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </td>
                       </tr>
                     ))}
                     {items.length === 0 && (
-                      <tr><td colSpan={6} className="text-center py-10 text-slate-400 italic">No hay productos cargados todavía. Hacé click en "Agregar Artículo".</td></tr>
+                      <tr>
+                        <td colSpan={6} className="py-20 text-center text-slate-400 italic">
+                          No hay productos cargados todavía. Hacé click en "Agregar Artículo".
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>

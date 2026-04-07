@@ -98,16 +98,17 @@ export const generateQuotePDF = async (quote: Quote, settings: AppSettings) => {
   // 3. Table of Items
   const tableData = quote.items.map(item => [
     item.name,
-    item.boxes.toString(),
-    item.pricePerBox ? formatARS(item.pricePerBox) : '-',
+    item.pricePerM2 ? formatARS(item.pricePerM2) : (item.pricePerBox && item.boxes ? formatARS(item.pricePerBox * item.boxes / item.m2) : '-'),
+    (item.pallets || 0).toString(),
+    (item.m2 || 0).toFixed(2),
     formatARS(item.subtotal)
   ]);
 
   autoTable(doc, {
     startY: 100,
-    head: [['Descripción de Producto', 'Cajas', 'Precio x Caja', 'Subtotal']],
+    head: [['Nombre', '$ m2', 'Pallets', 'm2 totales', '$ total']],
     body: tableData,
-    theme: 'striped',
+    theme: 'grid',
     headStyles: { 
       fillColor: [27, 42, 74], 
       textColor: [255, 255, 255], 
@@ -115,10 +116,11 @@ export const generateQuotePDF = async (quote: Quote, settings: AppSettings) => {
       halign: 'center'
     },
     columnStyles: {
-      0: { cellWidth: 'auto' },
-      1: { halign: 'center', cellWidth: 20 },
-      2: { halign: 'right', cellWidth: 40 },
-      3: { halign: 'right', cellWidth: 40 },
+      0: { cellWidth: 'auto', halign: 'left' },
+      1: { halign: 'right', cellWidth: 25 },
+      2: { halign: 'center', cellWidth: 20 },
+      3: { halign: 'center', cellWidth: 25 },
+      4: { halign: 'right', cellWidth: 35 },
     },
     styles: { fontSize: 9, cellPadding: 5 },
     margin: { left: MARGIN, right: MARGIN },

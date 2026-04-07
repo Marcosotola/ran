@@ -230,12 +230,20 @@ export default function ProductDetailPage() {
                   </div>
                 )}
                 {canSeePrices && (
-                  <div>
-                    <dt className="text-muted-foreground">Stock</dt>
-                    <dd className="font-semibold">
-                      {product.stock > 0 ? `${product.stock} cajas` : 'Sin stock'}
-                    </dd>
-                  </div>
+                  <>
+                    <div>
+                      <dt className="text-muted-foreground">Stock</dt>
+                      <dd className="font-semibold text-green-600">
+                        {product.stock > 0 ? `${product.stock} cajas` : 'Sin stock'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Pallets Disponibles</dt>
+                      <dd className="font-semibold text-blue-600">
+                        {product.stockPallets || 0} pallets
+                      </dd>
+                    </div>
+                  </>
                 )}
               </dl>
             </div>

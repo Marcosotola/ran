@@ -73,7 +73,7 @@ export function ProductCard({ product }: ProductCardProps) {
             <div className="flex flex-wrap items-center justify-between gap-y-1 text-xs font-bold border-b border-border/50 pb-2 mb-1">
               <span className="text-ran-navy whitespace-nowrap">{formatARS(product.pricePerM2)}/m²</span>
               <span className={`whitespace-nowrap ${product.stock === 0 ? 'text-red-500' : product.stock < 10 ? 'text-amber-500' : 'text-green-600'}`}>
-                Stock: {product.stock}
+                Stock: {product.stock} <span className="text-blue-500 ml-1">({product.stockPallets || 0} p.)</span>
               </span>
             </div>
           )}

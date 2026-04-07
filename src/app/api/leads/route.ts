@@ -94,16 +94,18 @@ export async function POST(req: NextRequest) {
               <thead>
                 <tr style="background: #f8fafc; text-align: left; font-size: 11px; text-transform: uppercase;">
                   <th style="padding: 10px;">Producto</th>
-                  <th style="padding: 10px;">Cajas</th>
-                  <th style="padding: 10px;">Subtotal</th>
+                  <th style="padding: 10px; text-align: center;">Pallets</th>
+                  <th style="padding: 10px; text-align: center;">m² totales</th>
+                  <th style="padding: 10px; text-align: right;">Subtotal</th>
                 </tr>
               </thead>
               <tbody>
                 ${items?.map((it: any) => `
                   <tr>
                     <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">${it.name}</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${it.boxes}</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${it.subtotal ? it.subtotal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }) : '-'}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${it.pallets || it.boxes || 0}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${it.m2 || 0}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">${it.subtotal ? it.subtotal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' }) : '-'}</td>
                   </tr>
                 `).join('')}
               </tbody>

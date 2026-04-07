@@ -38,9 +38,11 @@ export interface Product {
   description: string;
   images: string[]; // Firebase Storage URLs
   stock: number; // number of boxes in stock
+  stockPallets?: number; // New field: Current stock in pallets
   pricePerBox: number; // ARS
   pricePerM2: number; // ARS
   m2PerBox: number;
+  m2PerPallet?: number; // New field
   piecesPerBox: number;
   weight?: number; // kg per box
   sku?: string;
@@ -50,6 +52,7 @@ export interface Product {
   tags?: string[];
   isFeatured?: boolean;
   isOffer?: boolean;
+  isOfferM2?: boolean;
 }
 
 // ----- Quotes -----
@@ -60,8 +63,10 @@ export interface QuoteItem {
   name: string;
   size: string;
   m2: number;
+  pallets?: number; // New field
   boxes: number; // ceil(m2 / m2PerBox * 1.1) — 10% waste
   pricePerBox: number;
+  pricePerM2?: number; // New field
   subtotal: number;
 }
 

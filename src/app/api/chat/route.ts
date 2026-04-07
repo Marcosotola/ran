@@ -147,8 +147,8 @@ PRESUPUESTO_GENERADO:
 [MATERIAL]
 - Producto: [Nombre]
 - m2_cliente: [m²]
-- Cajas: [cant]
-- Precio_caja: $[monto]
+- Pallets: [cant]
+- Precio_m2: $[monto]
 - Subtotal: $[monto]
 [FIN_MATERIAL]
 TOTAL_MATERIALES: $[total]`;

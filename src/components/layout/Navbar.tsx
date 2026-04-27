@@ -79,7 +79,7 @@ function getDashboardUrl(role: string): string {
     contenido: '/contenido',
     secretaria: '/secretaria',
     vendedor: '/vendedor',
-    dev: '/dev',
+    dev: '/admin',
     cliente: '/cliente',
   };
   return map[role] || '/cliente';

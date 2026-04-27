@@ -135,6 +135,34 @@ export default function ContactoPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Email Sales */}
+                  {contact?.emailSales && (
+                    <div className="flex gap-4 items-start p-4 rounded-2xl bg-card border border-border group hover:border-ran-cerulean/30 transition-all shadow-sm">
+                      <div className="h-12 w-12 rounded-xl bg-ran-cerulean/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                        <Mail className="h-6 w-6 text-ran-cerulean" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-ran-navy">Ventas</h3>
+                        <p className="text-muted-foreground">{contact.emailSales}</p>
+                        <p className="text-xs text-muted-foreground mt-1 text-ran-navy/40">Presupuestos y compras</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Email Admin */}
+                  {contact?.emailAdmin && (
+                    <div className="flex gap-4 items-start p-4 rounded-2xl bg-card border border-border group hover:border-ran-cerulean/30 transition-all shadow-sm">
+                      <div className="h-12 w-12 rounded-xl bg-ran-cerulean/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                        <Mail className="h-6 w-6 text-ran-cerulean" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-ran-navy">Administración</h3>
+                        <p className="text-muted-foreground">{contact.emailAdmin}</p>
+                        <p className="text-xs text-muted-foreground mt-1 text-ran-navy/40">Facturación y pagos</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -17,6 +17,7 @@ import {
   Menu as MenuIcon,
   Sparkles,
   MessageSquare,
+  Wrench,
 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth-context';
 import { Button } from '@/components/ui/button';
@@ -109,6 +110,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
           );
         })}
+
+        {/* Developer / Subscription link ONLY for dev role */}
+        {ranUser?.role === 'dev' && (
+          <>
+            <div className="mx-3 my-4 h-px bg-border/50" />
+            <Link
+              href="/dev"
+              onClick={() => mobile && setMobileOpen(false)}
+              className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-black uppercase tracking-tight transition-all duration-150 ${
+                pathname.startsWith('/dev')
+                  ? 'bg-blue-600 text-white shadow-md scale-[1.02]'
+                  : 'text-blue-500 hover:text-blue-600 hover:bg-blue-50'
+              }`}
+            >
+              <Wrench className={`h-4 w-4 shrink-0 ${pathname.startsWith('/dev') ? 'text-white' : 'text-blue-500'}`} />
+              <span className="flex-1">Suscripción (Dev)</span>
+            </Link>
+          </>
+        )}
       </nav>
 
       <div className="p-4 mt-auto border-t border-border">

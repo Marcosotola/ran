@@ -175,6 +175,8 @@ export interface Subscription {
 export interface ContactInfo {
   phone: string;
   email: string;
+  emailAdmin?: string;
+  emailSales?: string;
   address: string;
   instagram?: string;
   facebook?: string;

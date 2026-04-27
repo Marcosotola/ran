@@ -76,7 +76,7 @@ export default function UsuariosAdminPage() {
   const { ranUser, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (authLoading || !ranUser || ranUser.role !== 'admin') return;
+    if (authLoading || !ranUser || (ranUser.role !== 'admin' && ranUser.role !== 'dev')) return;
 
     getDocs(collection(db, 'users'))
       .then((snap) => {
@@ -84,8 +84,10 @@ export default function UsuariosAdminPage() {
         const data = snap.docs
           .map((d) => ({ uid: d.id, ...d.data() })) as RANUser[];
           
-        // Filtrar para que el admin NO vea al developer ni a usuarios con rol dev
-        const filteredData = data.filter(u => u.role !== 'dev' && u.uid !== devUid);
+        // Si es admin común, no ve al dev. Si es dev, ve a todos.
+        const filteredData = ranUser.role === 'dev' 
+          ? data 
+          : data.filter(u => u.role !== 'dev' && u.uid !== devUid);
         
         setUsers(filteredData);
         setFiltered(filteredData);
@@ -249,7 +251,7 @@ export default function UsuariosAdminPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {ROLES.map((r) => (
+                              {(ranUser?.role === 'dev' ? [...ROLES, 'dev' as UserRole] : ROLES).map((r) => (
                                 <SelectItem key={r} value={r} className="text-xs">
                                   {ROLE_LABELS[r]}
                                 </SelectItem>

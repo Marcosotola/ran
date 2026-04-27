@@ -86,7 +86,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading || !ranUser || ranUser.role !== 'admin') return;
+    if (authLoading || !ranUser || (ranUser.role !== 'admin' && ranUser.role !== 'dev')) return;
 
     async function loadStats() {
       try {

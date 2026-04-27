@@ -72,15 +72,10 @@ function SuspendedGate({ settings, children }: { settings: AppSettings | null; c
     );
   }
 
-  // Dev logueado fuera de /dev → redirigir al panel dev
-  if (ranUser?.role === 'dev') {
-    return <DevBypassScreen />;
-  }
-
-  // Admin → puede navegar normalmente, el banner rojo del SubscriptionBanner
-  // es suficiente aviso. No bloqueamos para que pueda acceder a /admin/ajustes
-  // y gestionar el pago desde ahí.
-  if (ranUser?.role === 'admin') {
+  // Admin & Dev → pueden navegar normalmente, el banner rojo del SubscriptionBanner
+  // es suficiente aviso. No bloqueamos para que puedan acceder a gestionar el sistema
+  // y el pago desde Ajustes o el Panel Dev.
+  if (ranUser?.role === 'admin' || ranUser?.role === 'dev') {
     return <>{children}</>;
   }
 
@@ -248,22 +243,4 @@ function AdminPaymentScreen({ settings, onLogout }: { settings: AppSettings | nu
   );
 }
 
-// ──────────────────────────────────────────────────────────────
-// Pantalla 3: Dev logueado fuera de /dev → redirigir al panel dev
-// ──────────────────────────────────────────────────────────────
-function DevBypassScreen() {
-  const router = useRouter();
 
-  useEffect(() => {
-    router.replace('/dev');
-  }, [router]);
-
-  return (
-    <div className="flex h-screen items-center justify-center bg-[#0A1628]">
-      <div className="flex flex-col items-center gap-4 text-white">
-        <RefreshCw className="h-8 w-8 animate-spin text-blue-400" />
-        <p className="text-sm text-white/40 font-mono">Redirigiendo al panel dev...</p>
-      </div>
-    </div>
-  );
-}

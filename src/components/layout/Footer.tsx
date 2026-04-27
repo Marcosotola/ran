@@ -115,6 +115,18 @@ export function Footer() {
                   <a href={`mailto:${contact.email}`} className="hover:text-white transition-colors">{contact.email}</a>
                 </li>
               )}
+              {contact?.emailSales && (
+                <li className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-ran-cerulean shrink-0" />
+                  <a href={`mailto:${contact.emailSales}`} className="hover:text-white transition-colors">{contact.emailSales}</a>
+                </li>
+              )}
+              {contact?.emailAdmin && (
+                <li className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-ran-cerulean shrink-0" />
+                  <a href={`mailto:${contact.emailAdmin}`} className="hover:text-white transition-colors">{contact.emailAdmin}</a>
+                </li>
+              )}
             </ul>
           </div>
         </div>

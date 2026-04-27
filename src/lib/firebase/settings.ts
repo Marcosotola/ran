@@ -20,7 +20,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   maintenanceMode: false,
   contactInfo: {
     phone: '+54 9 11 0000-0000',
-    email: 'info@ranpisos.com.ar',
+    email: 'info@ranpisosyrevestimientos.com.ar',
+    emailAdmin: 'administracion@ranpisosyrevestimientos.com.ar',
+    emailSales: 'ventas@ranpisosyrevestimientos.com.ar',
     address: 'Buenos Aires, Argentina',
     whatsapp: '5491100000000',
     instagram: 'https://instagram.com/ranpisos',

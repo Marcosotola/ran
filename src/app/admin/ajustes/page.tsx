@@ -325,7 +325,35 @@ export default function AjustesPage() {
                   type="email"
                   value={settings?.contactInfo.email || ''}
                   onChange={handleChange}
-                  placeholder="info@ranpisos.com.ar"
+                  placeholder="info@ranpisosyrevestimientos.com.ar"
+                  className="rounded-xl"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-ran-navy flex items-center gap-2">
+                  <Mail className="h-3.5 w-3.5" /> Correo Administración
+                </label>
+                <Input 
+                  name="emailAdmin"
+                  type="email"
+                  value={settings?.contactInfo.emailAdmin || ''}
+                  onChange={handleChange}
+                  placeholder="administracion@ranpisosyrevestimientos.com.ar"
+                  className="rounded-xl"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-ran-navy flex items-center gap-2">
+                  <Mail className="h-3.5 w-3.5" /> Correo Ventas
+                </label>
+                <Input 
+                  name="emailSales"
+                  type="email"
+                  value={settings?.contactInfo.emailSales || ''}
+                  onChange={handleChange}
+                  placeholder="ventas@ranpisosyrevestimientos.com.ar"
                   className="rounded-xl"
                 />
               </div>

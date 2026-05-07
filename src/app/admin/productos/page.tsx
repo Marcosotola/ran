@@ -226,7 +226,7 @@ export default function ProductosAdminPage() {
                         )}
                       </div>
                       <div>
-                        <p className="font-semibold truncate max-w-36">{product.name}</p>
+                        <p className="font-semibold">{product.name}</p>
                         <p className="text-xs text-muted-foreground">{product.category}</p>
                       </div>
                     </div>

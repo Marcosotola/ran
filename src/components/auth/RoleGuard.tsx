@@ -43,8 +43,8 @@ export function RoleGuard({ children, allowedRoles, redirectTo }: RoleGuardProps
 
   if (!ranUser) return null;
 
-  // Enforce subscription for internal panels
-  if (!isActive) {
+  // Enforce subscription for internal panels (SuperAdmin bypasses this to fix things)
+  if (!isActive && ranUser.role !== 'superadmin') {
     return (
       <div className="flex h-screen items-center justify-center p-8 bg-[#0F1A2E] text-white">
         <div className="text-center max-w-md space-y-6">

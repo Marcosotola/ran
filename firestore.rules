@@ -12,15 +12,15 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
     
-    // Devuelve true si el usuario tiene alguno de los roles listados, O si es admin/dev
+    // Devuelve true si el usuario tiene alguno de los roles listados, O si es admin/superadmin
     function hasAnyRole(roles) {
-      return isSignedIn() && (getRole() in roles || getRole() == 'admin' || getRole() == 'dev');
+      return isSignedIn() && (getRole() in roles || getRole() == 'admin' || getRole() == 'superadmin');
     }
 
     // ── CONFIGURACIÓN GLOBAL (settings/app) ─────────────────────────────
     // ⚠️ CRÍTICO: Esta regla debe ir ANTES del catch-all /{document=**}
     // Lectura pública: necesaria para que SubscriptionProvider funcione sin login
-    // Escritura: solo admin o dev pueden cambiar montos, URLs y estado
+    // Escritura: solo admin o superadmin pueden cambiar montos, URLs y estado
     match /settings/app {
       allow read: if true;
       allow write: if hasAnyRole([]);
@@ -55,7 +55,7 @@ service cloud.firestore {
     }
 
     // ── REGLA POR DEFECTO ─────────────────────────────────────────────────
-    // Solo admin y dev acceden a todo lo demás (leads, logs, etc.)
+    // Solo admin y superadmin acceden a todo lo demás (leads, logs, etc.)
     match /{document=**} {
       allow read, write: if hasAnyRole([]);
     }

@@ -3,13 +3,13 @@ import type { NextRequest } from 'next/server';
 
 // Protected route prefixes and their required roles
 const PROTECTED = [
-  { prefix: '/admin', roles: ['admin', 'dev'] },
-  { prefix: '/finanzas', roles: ['finanzas', 'admin', 'dev'] },
-  { prefix: '/contenido', roles: ['contenido', 'admin', 'dev'] },
-  { prefix: '/secretaria', roles: ['secretaria', 'admin', 'dev'] },
-  { prefix: '/vendedor', roles: ['vendedor', 'admin', 'dev'] },
-  { prefix: '/dev', roles: ['dev'] },
-  { prefix: '/cliente', roles: ['cliente', 'vendedor', 'secretaria', 'finanzas', 'contenido', 'admin', 'dev'] },
+  { prefix: '/admin', roles: ['admin', 'superadmin'] },
+  { prefix: '/finanzas', roles: ['finanzas', 'admin', 'superadmin'] },
+  { prefix: '/contenido', roles: ['contenido', 'admin', 'superadmin'] },
+  { prefix: '/secretaria', roles: ['secretaria', 'admin', 'superadmin'] },
+  { prefix: '/vendedor', roles: ['vendedor', 'admin', 'superadmin'] },
+  { prefix: '/dev', roles: ['superadmin'] },
+  { prefix: '/cliente', roles: ['cliente', 'vendedor', 'secretaria', 'finanzas', 'contenido', 'admin', 'superadmin'] },
 ];
 
 export function proxy(request: NextRequest) {

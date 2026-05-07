@@ -14,7 +14,7 @@ export function DevGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading) {
-      if (role !== 'dev') {
+      if (role !== 'superadmin') {
         setAuthorized(false);
       } else {
         setAuthorized(true);

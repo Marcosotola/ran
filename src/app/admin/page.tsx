@@ -86,14 +86,14 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading || !ranUser || (ranUser.role !== 'admin' && ranUser.role !== 'dev')) return;
+    if (authLoading || !ranUser || (ranUser.role !== 'admin' && ranUser.role !== 'superadmin')) return;
 
     async function loadStats() {
       try {
         const [products, quotes, usersSnap] = await Promise.all([
           getProducts({}),
           getAllQuotes(),
-          getCountFromServer(query(collection(db, 'users'), where('role', '!=', 'dev'))),
+          getCountFromServer(query(collection(db, 'users'), where('role', '!=', 'superadmin'))),
         ]);
 
         const activeProducts = products.filter((p) => p.isActive).length;

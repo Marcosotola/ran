@@ -9,7 +9,7 @@ export type UserRole =
   | 'secretaria'
   | 'finanzas'
   | 'admin'
-  | 'dev';
+  | 'superadmin';
 
 export interface RANUser {
   uid: string;

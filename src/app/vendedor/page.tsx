@@ -297,7 +297,7 @@ function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings }: { quote
 
       // Fetch vendors
       getAllUsers().then(users => {
-        setAllVendors(users.filter(u => u.role === 'vendedor' || u.role === 'admin' || u.role === 'dev'));
+        setAllVendors(users.filter(u => u.role === 'vendedor' || u.role === 'admin' || u.role === 'superadmin'));
       });
     }
   }, [open, quote]);

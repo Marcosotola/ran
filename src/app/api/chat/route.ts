@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Sistema en mantenimiento." });
     }
 
-    const privilegedRoles = ['admin', 'vendedor', 'secretaria', 'finanzas', 'dev'];
+    const privilegedRoles = ['admin', 'vendedor', 'secretaria', 'finanzas', 'superadmin'];
     const hasPrivileges = privilegedRoles.includes(userRole);
     
     // El modo se determina por el parámetro 'mode' o por el rol si no se especifica

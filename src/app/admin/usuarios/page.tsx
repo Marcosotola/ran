@@ -50,7 +50,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
   contenido: 'bg-amber-100 text-amber-700',
   finanzas: 'bg-green-100 text-green-700',
   admin: 'bg-purple-100 text-purple-700',
-  dev: 'bg-slate-100 text-slate-700',
+  superadmin: 'bg-slate-100 text-slate-700',
 };
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -60,7 +60,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   contenido: 'Gestor de Catálogo',
   finanzas: 'Finanzas',
   admin: 'Admin',
-  dev: 'Developer',
+  superadmin: 'Super Admin',
 };
 
 export default function UsuariosAdminPage() {
@@ -76,7 +76,7 @@ export default function UsuariosAdminPage() {
   const { ranUser, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (authLoading || !ranUser || (ranUser.role !== 'admin' && ranUser.role !== 'dev')) return;
+    if (authLoading || !ranUser || (ranUser.role !== 'admin' && ranUser.role !== 'superadmin')) return;
 
     getDocs(collection(db, 'users'))
       .then((snap) => {
@@ -84,10 +84,10 @@ export default function UsuariosAdminPage() {
         const data = snap.docs
           .map((d) => ({ uid: d.id, ...d.data() })) as RANUser[];
           
-        // Si es admin común, no ve al dev. Si es dev, ve a todos.
-        const filteredData = ranUser.role === 'dev' 
+        // Si es admin común, no ve al superadmin. Si es superadmin, ve a todos.
+        const filteredData = ranUser.role === 'superadmin' 
           ? data 
-          : data.filter(u => u.role !== 'dev' && u.uid !== devUid);
+          : data.filter(u => u.role !== 'superadmin' && u.uid !== devUid);
         
         setUsers(filteredData);
         setFiltered(filteredData);
@@ -251,7 +251,7 @@ export default function UsuariosAdminPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {(ranUser?.role === 'dev' ? [...ROLES, 'dev' as UserRole] : ROLES).map((r) => (
+                              {(ranUser?.role === 'superadmin' ? [...ROLES, 'superadmin' as UserRole] : ROLES).map((r) => (
                                 <SelectItem key={r} value={r} className="text-xs">
                                   {ROLE_LABELS[r]}
                                 </SelectItem>

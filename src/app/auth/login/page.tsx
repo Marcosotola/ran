@@ -16,7 +16,7 @@ import { UserRole } from '@/lib/types';
 // Mapea cada rol a su ruta de inicio
 function getRoleHome(role: UserRole | null | undefined): string {
   switch (role) {
-    case 'dev':       return '/dev';
+    case 'superadmin':return '/admin';
     case 'admin':     return '/admin';
     case 'vendedor':  return '/vendedor';
     case 'secretaria':return '/secretaria';

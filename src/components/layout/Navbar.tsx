@@ -59,7 +59,7 @@ const ROLE_LABELS: Record<string, string> = {
   secretaria: 'Secretaría',
   finanzas: 'Finanzas',
   admin: 'Admin',
-  dev: 'Dev',
+  superadmin: 'Super Admin',
 };
 
 const ROLE_COLORS: Record<string, string> = {
@@ -69,7 +69,7 @@ const ROLE_COLORS: Record<string, string> = {
   secretaria: 'default',
   finanzas: 'default',
   admin: 'destructive',
-  dev: 'destructive',
+  superadmin: 'destructive',
 };
 
 function getDashboardUrl(role: string): string {
@@ -79,7 +79,7 @@ function getDashboardUrl(role: string): string {
     contenido: '/contenido',
     secretaria: '/secretaria',
     vendedor: '/vendedor',
-    dev: '/admin',
+    superadmin: '/admin',
     cliente: '/cliente',
   };
   return map[role] || '/cliente';

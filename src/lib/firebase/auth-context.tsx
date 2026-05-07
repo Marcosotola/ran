@@ -42,22 +42,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         document.cookie = `ran_session=${firebaseUser.uid}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
         
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        const devUid = process.env.NEXT_PUBLIC_DEV_UID;
+        // Limpiamos el UID del entorno por si tiene comillas o espacios
+        const devUid = (process.env.NEXT_PUBLIC_DEV_UID || '').replace(/['"]/g, '').trim();
         
         if (userDoc.exists()) {
           const data = userDoc.data() as RANUser;
-          // Si el UID coincide con el dev, forzamos el rol dev y lo sincronizamos con la DB
+          // Si el UID coincide con el dev, forzamos el rol superadmin y lo sincronizamos con la DB
           if (firebaseUser.uid === devUid) {
-            if (data.role !== 'dev') {
+            if (data.role !== 'superadmin') {
               // Sincronizamos con Firestore para que las reglas de seguridad nos permitan escribir
-              await setDoc(doc(db, 'users', firebaseUser.uid), { ...data, role: 'dev' }, { merge: true });
-              data.role = 'dev';
+              await setDoc(doc(db, 'users', firebaseUser.uid), { ...data, role: 'superadmin' }, { merge: true });
+              data.role = 'superadmin';
             }
           }
           setRanUser(data);
         } else {
           // New user via Google — create with default 'cliente' role
-          const role: UserRole = firebaseUser.uid === devUid ? 'dev' : 'cliente';
+          const role: UserRole = firebaseUser.uid === devUid ? 'superadmin' : 'cliente';
           const newUser: RANUser = {
             uid: firebaseUser.uid,
             email: firebaseUser.email!,
@@ -86,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Solo intentamos registrar el token si el usuario está logueado 
     // y tiene un rol que requiere notificaciones (admin, vendedor, etc.)
-    const rolesPrivilegiados: UserRole[] = ['admin', 'vendedor', 'secretaria', 'finanzas', 'dev'];
+    const rolesPrivilegiados: UserRole[] = ['admin', 'vendedor', 'secretaria', 'finanzas', 'superadmin'];
     
     if (ranUser && rolesPrivilegiados.includes(ranUser.role)) {
       // Pequeño delay para no interferir con la carga inicial
@@ -156,6 +157,6 @@ export function useAuth() {
 // Role guards
 export function hasRole(role: UserRole | null, allowed: UserRole[]): boolean {
   if (!role) return false;
-  if (role === 'admin' || role === 'dev') return true;
+  if (role === 'admin' || role === 'superadmin') return true;
   return allowed.includes(role);
 }

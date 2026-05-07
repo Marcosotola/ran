@@ -79,7 +79,7 @@ interface ContactForm {
 
 function ChatContent() {
   const { ranUser } = useAuth();
-  const isAdmin = useMemo(() => ['admin', 'vendedor', 'secretaria', 'finanzas', 'dev'].includes(ranUser?.role || ''), [ranUser]);
+  const isAdmin = useMemo(() => ['admin', 'vendedor', 'secretaria', 'finanzas', 'superadmin'].includes(ranUser?.role || ''), [ranUser]);
   
   const searchParams = useSearchParams();
   const productId = searchParams.get('producto');

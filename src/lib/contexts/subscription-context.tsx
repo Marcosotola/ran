@@ -75,7 +75,7 @@ function SuspendedGate({ settings, children }: { settings: AppSettings | null; c
   // Admin & Dev → pueden navegar normalmente, el banner rojo del SubscriptionBanner
   // es suficiente aviso. No bloqueamos para que puedan acceder a gestionar el sistema
   // y el pago desde Ajustes o el Panel Dev.
-  if (ranUser?.role === 'admin' || ranUser?.role === 'dev') {
+  if (ranUser?.role === 'admin' || ranUser?.role === 'superadmin') {
     return <>{children}</>;
   }
 

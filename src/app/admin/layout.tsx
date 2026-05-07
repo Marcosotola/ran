@@ -111,21 +111,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           );
         })}
 
-        {/* Developer / Subscription link ONLY for dev role */}
-        {ranUser?.role === 'dev' && (
+        {/* SuperAdmin / Subscription link ONLY for superadmin role */}
+        {ranUser?.role === 'superadmin' && (
           <>
             <div className="mx-3 my-4 h-px bg-border/50" />
             <Link
-              href="/dev"
+              href="/admin/suscripcion"
               onClick={() => mobile && setMobileOpen(false)}
               className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-black uppercase tracking-tight transition-all duration-150 ${
-                pathname.startsWith('/dev')
+                pathname === '/admin/suscripcion'
                   ? 'bg-blue-600 text-white shadow-md scale-[1.02]'
                   : 'text-blue-500 hover:text-blue-600 hover:bg-blue-50'
               }`}
             >
-              <Wrench className={`h-4 w-4 shrink-0 ${pathname.startsWith('/dev') ? 'text-white' : 'text-blue-500'}`} />
-              <span className="flex-1">Suscripción (Dev)</span>
+              <Wrench className={`h-4 w-4 shrink-0 ${pathname === '/admin/suscripcion' ? 'text-white' : 'text-blue-500'}`} />
+              <span className="flex-1">Suscripción</span>
             </Link>
           </>
         )}

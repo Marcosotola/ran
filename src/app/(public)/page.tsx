@@ -24,6 +24,7 @@ import { useEffect, useState } from 'react';
 import { getProducts } from '@/lib/firebase/products';
 import { Product } from '@/lib/types';
 import { ProductCard } from '@/components/products/ProductCard';
+import { BrandPartners } from '@/components/home/BrandPartners';
 
 const FEATURES = [
   {
@@ -248,6 +249,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <BrandPartners />
 
       {/* ─── CAROUSELS ─── */}
       <ProductCarousel 

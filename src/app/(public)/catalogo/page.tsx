@@ -43,9 +43,12 @@ const CATEGORIES = [
   { value: 'ambos', label: 'Piso & Pared' },
 ];
 
-const SIZES = ['35x35', '56x56', '18x56', '31x53', '20x50', '45x45', '60x60', '30x60', '60x120'];
+const SIZES = ['35x35', '56x56', '18x56', '31x53', '20x50', '45x45', '60x60', '30x60', '60x120', '80x160', '22x160', '120x120'];
 
 const FINISHES: ProductFinish[] = ['Brillante', 'Mate', 'Pulido', 'Rectificado', 'Natural', 'Otro'];
+
+const BRANDS = ['Cerámica Lourdes', 'SPL', 'San Pietro', 'Otra'];
+const MATERIALS = ['Cerámica', 'Porcelanato', 'Otro'];
 
 const SORTS = [
   { value: 'name', label: 'Nombre A–Z' },
@@ -76,6 +79,12 @@ export default function CatalogoPage() {
   const [selectedFinishes, setSelectedFinishes] = useState<string[]>(
     searchParams.get('finish')?.split(',').filter(Boolean) || []
   );
+  const [selectedBrands, setSelectedBrands] = useState<string[]>(
+    searchParams.get('brand')?.split(',').filter(Boolean) || []
+  );
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>(
+    searchParams.get('material')?.split(',').filter(Boolean) || []
+  );
   const [sort, setSort] = useState(searchParams.get('sort') || 'name');
 
   useEffect(() => {
@@ -95,6 +104,8 @@ export default function CatalogoPage() {
     if (selectedCats.length > 0) params.set('categoria', selectedCats.join(','));
     if (selectedSizes.length > 0) params.set('size', selectedSizes.join(','));
     if (selectedFinishes.length > 0) params.set('finish', selectedFinishes.join(','));
+    if (selectedBrands.length > 0) params.set('brand', selectedBrands.join(','));
+    if (selectedMaterials.length > 0) params.set('material', selectedMaterials.join(','));
     if (sort !== 'name') params.set('sort', sort);
 
     const query = params.toString();
@@ -103,7 +114,7 @@ export default function CatalogoPage() {
     if (query !== currentQuery) {
       router.replace(`/catalogo${query ? `?${query}` : ''}`, { scroll: false });
     }
-  }, [search, selectedCats, selectedSizes, selectedFinishes, sort, router, searchParams]);
+  }, [search, selectedCats, selectedSizes, selectedFinishes, selectedBrands, selectedMaterials, sort, router, searchParams]);
 
   // Sync state with URL (Pulling changes from URL manually if needed)
   useEffect(() => {
@@ -118,6 +129,12 @@ export default function CatalogoPage() {
 
     const finishParam = searchParams.get('finish')?.split(',').filter(Boolean) || [];
     if (JSON.stringify(finishParam) !== JSON.stringify(selectedFinishes)) setSelectedFinishes(finishParam);
+
+    const brandParam = searchParams.get('brand')?.split(',').filter(Boolean) || [];
+    if (JSON.stringify(brandParam) !== JSON.stringify(selectedBrands)) setSelectedBrands(brandParam);
+
+    const materialParam = searchParams.get('material')?.split(',').filter(Boolean) || [];
+    if (JSON.stringify(materialParam) !== JSON.stringify(selectedMaterials)) setSelectedMaterials(materialParam);
 
     const sortParam = searchParams.get('sort') || 'name';
     if (sortParam !== sort) setSort(sortParam);
@@ -136,13 +153,21 @@ export default function CatalogoPage() {
     if (selectedFinishes.length > 0) {
       result = result.filter((p) => selectedFinishes.includes(p.finish));
     }
+    if (selectedBrands.length > 0) {
+      result = result.filter((p) => p.brand && selectedBrands.includes(p.brand));
+    }
+    if (selectedMaterials.length > 0) {
+      result = result.filter((p) => p.material && selectedMaterials.includes(p.material));
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
           p.description.toLowerCase().includes(q) ||
-          p.size.includes(q),
+          p.size.includes(q) ||
+          (p.brand && p.brand.toLowerCase().includes(q)) ||
+          (p.material && p.material.toLowerCase().includes(q)),
       );
     }
 
@@ -153,7 +178,7 @@ export default function CatalogoPage() {
     });
 
     return result;
-  }, [products, selectedCats, selectedSizes, selectedFinishes, search, sort]);
+  }, [products, selectedCats, selectedSizes, selectedFinishes, selectedBrands, selectedMaterials, search, sort]);
 
   const toggleFilter = (list: string[], setList: (val: string[]) => void, value: string) => {
     if (list.includes(value)) {
@@ -167,12 +192,14 @@ export default function CatalogoPage() {
     setSelectedCats([]);
     setSelectedSizes([]);
     setSelectedFinishes([]);
+    setSelectedBrands([]);
+    setSelectedMaterials([]);
     setSearch('');
     setSort('name');
     router.push('/catalogo');
   };
 
-  const activeFiltersCount = selectedCats.length + selectedSizes.length + selectedFinishes.length + (search ? 1 : 0);
+  const activeFiltersCount = selectedCats.length + selectedSizes.length + selectedFinishes.length + selectedBrands.length + selectedMaterials.length + (search ? 1 : 0);
 
   const FilterSidebar = () => (
     <div className="space-y-8 animate-fade-in-up">
@@ -240,6 +267,54 @@ export default function CatalogoPage() {
               />
               <label className="text-sm font-medium leading-none cursor-pointer group-hover:text-ran-cerulean transition-colors">
                 {f}
+              </label>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <Separator className="bg-border/50" />
+
+      {/* Brand */}
+      <section>
+        <h3 className="text-sm font-black text-ran-navy uppercase tracking-wider mb-4 flex items-center gap-2">
+          Marca
+        </h3>
+        <div className="space-y-3">
+          {BRANDS.map((b) => (
+            <div key={b} className="flex items-center space-x-3 group cursor-pointer" onClick={() => toggleFilter(selectedBrands, setSelectedBrands, b)}>
+              <Checkbox 
+                id={`brand-${b.replace(/\s+/g, '-')}`} 
+                checked={selectedBrands.includes(b)}
+                onCheckedChange={() => toggleFilter(selectedBrands, setSelectedBrands, b)}
+                className="border-ran-slate/30 data-[state=checked]:bg-ran-cerulean flex items-center justify-center p-0"
+              />
+              <label className="text-sm font-medium leading-none cursor-pointer group-hover:text-ran-cerulean transition-colors">
+                {b}
+              </label>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <Separator className="bg-border/50" />
+
+      {/* Material */}
+      <section>
+        <h3 className="text-sm font-black text-ran-navy uppercase tracking-wider mb-4 flex items-center gap-2">
+          Material
+        </h3>
+        <div className="space-y-3">
+          {MATERIALS.map((m) => (
+            <div key={m} className="flex items-center space-x-3 group cursor-pointer" onClick={() => toggleFilter(selectedMaterials, setSelectedMaterials, m)}>
+              <Checkbox 
+                id={`material-${m.replace(/\s+/g, '-')}`} 
+                checked={selectedMaterials.includes(m)}
+                onCheckedChange={() => toggleFilter(selectedMaterials, setSelectedMaterials, m)}
+                className="border-ran-slate/30 data-[state=checked]:bg-ran-cerulean flex items-center justify-center p-0"
+              />
+              <label className="text-sm font-medium leading-none cursor-pointer group-hover:text-ran-cerulean transition-colors">
+                {m}
               </label>
             </div>
           ))}
@@ -376,6 +451,18 @@ export default function CatalogoPage() {
                   <Badge key={f} variant="secondary" className="rounded-lg py-1 px-3 bg-ran-gold/10 text-ran-gold border-ran-gold/20 gap-2">
                     {f}
                     <X className="h-3 w-3 cursor-pointer hover:text-red-500" onClick={() => toggleFilter(selectedFinishes, setSelectedFinishes, f)} />
+                  </Badge>
+                ))}
+                {selectedBrands.map(b => (
+                  <Badge key={b} variant="secondary" className="rounded-lg py-1 px-3 bg-ran-cerulean/10 text-ran-cerulean border-ran-cerulean/20 gap-2 font-semibold">
+                    {b}
+                    <X className="h-3 w-3 cursor-pointer hover:text-red-500" onClick={() => toggleFilter(selectedBrands, setSelectedBrands, b)} />
+                  </Badge>
+                ))}
+                {selectedMaterials.map(m => (
+                  <Badge key={m} variant="secondary" className="rounded-lg py-1 px-3 bg-ran-navy/10 text-ran-navy border-ran-navy/20 gap-2 font-semibold">
+                    {m}
+                    <X className="h-3 w-3 cursor-pointer hover:text-red-500" onClick={() => toggleFilter(selectedMaterials, setSelectedMaterials, m)} />
                   </Badge>
                 ))}
                 <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-muted-foreground hover:text-ran-navy py-0 h-6 h-auto px-2">

@@ -23,6 +23,65 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+// Helper to compress images client-side to dramatically speed up uploads
+const compressImage = (file: File, maxWidth = 1000, maxHeight = 1000, quality = 0.85): Promise<Blob | File> => {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') {
+      resolve(file);
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.onerror = () => resolve(file);
+    };
+    reader.onerror = () => resolve(file);
+  });
+};
+
 interface ProductFormProps {
   initialData?: Product;
 }
@@ -42,10 +101,14 @@ interface FormData {
   weight: string;
   sku: string;
   m2PerPallet: string;
+  brand: string;
+  material: string;
 }
 
-const SIZES = ['35x35', '56x56', '18x56', '31x53', '20x50', '45x45', '60x60', '30x60', '60x120'];
+const SIZES = ['35x35', '56x56', '18x56', '31x53', '20x50', '45x45', '60x60', '30x60', '60x120', '80x160', '22x160', '120x120'];
 const FINISHES: ProductFinish[] = ['Brillante', 'Mate', 'Pulido', 'Rectificado', 'Natural', 'Otro'];
+const BRANDS = ['Cerámica Lourdes', 'SPL', 'San Pietro', 'Otra', 'N/A'];
+const MATERIALS = ['Cerámica', 'Porcelanato', 'Otro', 'N/A'];
 
 export default function ProductForm({ initialData }: ProductFormProps) {
   const router = useRouter();
@@ -67,6 +130,8 @@ export default function ProductForm({ initialData }: ProductFormProps) {
     weight: initialData?.weight?.toString() || '',
     sku: initialData?.sku || '',
     m2PerPallet: initialData?.m2PerPallet?.toString() || '',
+    brand: initialData?.brand || 'N/A',
+    material: initialData?.material || 'N/A',
   });
 
   const [files, setFiles] = useState<File[]>([]);
@@ -114,9 +179,17 @@ export default function ProductForm({ initialData }: ProductFormProps) {
 
     let done = 0;
     for (const file of files) {
+      let uploadPayload: Blob | File = file;
+      try {
+        // Compress image client-side to reduce file size from ~5MB-10MB to ~150KB
+        uploadPayload = await compressImage(file);
+      } catch (err) {
+        console.warn('Image compression failed, using original file:', err);
+      }
+
       const storageRef = ref(storage, `products/${productId}/${Date.now()}_${file.name}`);
       await new Promise<void>((resolve, reject) => {
-        const task = uploadBytesResumable(storageRef, file);
+        const task = uploadBytesResumable(storageRef, uploadPayload);
         task.on(
           'state_changed',
           (snap) => {
@@ -170,6 +243,8 @@ export default function ProductForm({ initialData }: ProductFormProps) {
       if (form.weight) productData.weight = parseFloat(form.weight);
       if (form.sku) productData.sku = form.sku;
       if (form.m2PerPallet) productData.m2PerPallet = parseFloat(form.m2PerPallet);
+      if (form.brand && form.brand !== 'N/A') productData.brand = form.brand;
+      if (form.material && form.material !== 'N/A') productData.material = form.material;
 
       let productId = initialData?.id;
 
@@ -258,6 +333,27 @@ export default function ProductForm({ initialData }: ProductFormProps) {
           <div className="space-y-1">
             <Label htmlFor="prod-desc">Descripción</Label>
             <Textarea id="prod-desc" placeholder="Descripción del producto..." value={form.description} onChange={(e) => update('description', e.target.value)} rows={2} className="resize-none" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Marca</Label>
+              <Select value={form.brand} onValueChange={(v) => update('brand', v)}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                <SelectContent>
+                  {BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Material</Label>
+              <Select value={form.material} onValueChange={(v) => update('material', v)}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                <SelectContent>
+                  {MATERIALS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
@@ -362,13 +458,13 @@ export default function ProductForm({ initialData }: ProductFormProps) {
           <div className="grid grid-cols-5 gap-2">
             {previews.map((src, i) => (
               <div key={i} className="relative aspect-square rounded-lg overflow-hidden group border border-border">
-                <Image src={src} alt="" fill className="object-cover" sizes="80px" />
+                <Image src={src} alt="" fill className="object-cover" sizes="80px" unoptimized />
                 <button
                   type="button"
                   onClick={() => removeImage(i)}
-                  className="absolute top-1 right-1 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1 right-1 h-6 w-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg transition-colors z-10"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </div>
             ))}

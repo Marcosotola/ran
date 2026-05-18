@@ -114,6 +114,7 @@ export default function ProductDetailPage() {
                     className="object-cover"
                     sizes="(max-width: 1024px) 100vw, 50vw"
                     priority
+                    unoptimized
                   />
                   {images.length > 1 && (
                     <>
@@ -150,7 +151,7 @@ export default function ProductDetailPage() {
                       i === activeImg ? 'border-[#3B82C4]' : 'border-transparent hover:border-[#3B82C4]/40'
                     }`}
                   >
-                    <Image src={src} alt="" fill className="object-cover" sizes="64px" />
+                    <Image src={src} alt="" fill className="object-cover" sizes="64px" unoptimized />
                   </button>
                 ))}
               </div>
@@ -165,6 +166,8 @@ export default function ProductDetailPage() {
                   {product.category === 'pisos' ? 'Piso' : 'Pared'}
                 </Badge>
                 <Badge variant="outline">{product.finish}</Badge>
+                {product.brand && <Badge className="bg-ran-gold text-ran-navy hover:bg-ran-gold/90 font-bold">{product.brand}</Badge>}
+                {product.material && <Badge className="bg-[#3B82C4]/20 text-[#3B82C4] border-transparent font-semibold">{product.material}</Badge>}
                 {canSeePrices && (
                   <>
                     {product.stock === 0 && <Badge variant="destructive">Sin stock</Badge>}
@@ -215,6 +218,18 @@ export default function ProductDetailPage() {
                   <dt className="text-muted-foreground">Acabado</dt>
                   <dd className="font-semibold">{product.finish}</dd>
                 </div>
+                {product.brand && (
+                  <div>
+                    <dt className="text-muted-foreground">Marca / Proveedor</dt>
+                    <dd className="font-semibold">{product.brand}</dd>
+                  </div>
+                )}
+                {product.material && (
+                  <div>
+                    <dt className="text-muted-foreground">Material / Tipo</dt>
+                    <dd className="font-semibold">{product.material}</dd>
+                  </div>
+                )}
                 <div>
                   <dt className="text-muted-foreground">m² por caja</dt>
                   <dd className="font-semibold">{product.m2PerBox} m²</dd>

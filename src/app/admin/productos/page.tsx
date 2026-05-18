@@ -52,6 +52,8 @@ export default function ProductosAdminPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [updatingFieldId, setUpdatingFieldId] = useState<string | null>(null);
+  const [filterBrand, setFilterBrand] = useState<string>('all');
+  const [filterMaterial, setFilterMaterial] = useState<string>('all');
 
   useEffect(() => {
     getProducts({})
@@ -71,8 +73,20 @@ export default function ProductosAdminPage() {
       result = result.filter((p) => 
         p.name.toLowerCase().includes(s) || 
         p.size.includes(s) || 
-        p.category.toLowerCase().includes(s)
+        p.category.toLowerCase().includes(s) ||
+        (p.brand && p.brand.toLowerCase().includes(s)) ||
+        (p.material && p.material.toLowerCase().includes(s))
       );
+    }
+
+    // Brand filter
+    if (filterBrand !== 'all') {
+      result = result.filter((p) => p.brand === filterBrand);
+    }
+
+    // Material filter
+    if (filterMaterial !== 'all') {
+      result = result.filter((p) => p.material === filterMaterial);
     }
 
     // Sort
@@ -89,7 +103,7 @@ export default function ProductosAdminPage() {
     });
 
     setFiltered(result);
-  }, [products, search, sortBy, sortOrder]);
+  }, [products, search, sortBy, sortOrder, filterBrand, filterMaterial]);
 
   const toggleActive = async (id: string, current: boolean) => {
     setTogglingId(id);
@@ -147,7 +161,7 @@ export default function ProductosAdminPage() {
           <h1 className="text-2xl font-black">Productos</h1>
           <p className="text-muted-foreground text-sm">{products.length} productos en el catálogo</p>
         </div>
-        <Button className="ran-gradient text-white border-0 hover:opacity-90" asChild>
+        <Button className="ran-gradient text-white border-0 hover:opacity-90 rounded-xl h-10" asChild>
           <Link href="/admin/subir-productos">
             <Plus className="h-4 w-4 mr-2" />
             Agregar
@@ -155,18 +169,43 @@ export default function ProductosAdminPage() {
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col xl:flex-row gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nombre, categoría..."
+            placeholder="Buscar por nombre, categoría, marca..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 text-sm rounded-xl"
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={filterBrand} onValueChange={setFilterBrand}>
+            <SelectTrigger className="w-[155px] rounded-xl text-sm bg-card border-border">
+              <SelectValue placeholder="Marca: Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Marca: Todas</SelectItem>
+              <SelectItem value="Cerámica Lourdes">Cerámica Lourdes</SelectItem>
+              <SelectItem value="SPL">SPL</SelectItem>
+              <SelectItem value="San Pietro">San Pietro</SelectItem>
+              <SelectItem value="Otra">Otra</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filterMaterial} onValueChange={setFilterMaterial}>
+            <SelectTrigger className="w-[155px] rounded-xl text-sm bg-card border-border">
+              <SelectValue placeholder="Material: Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Material: Todos</SelectItem>
+              <SelectItem value="Cerámica">Cerámica</SelectItem>
+              <SelectItem value="Porcelanato">Porcelanato</SelectItem>
+              <SelectItem value="Otro">Otro</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
             <SelectTrigger className="w-[140px] rounded-xl text-sm">
               <ArrowUpDown className="h-3 w-3 mr-2" />
@@ -203,6 +242,8 @@ export default function ProductosAdminPage() {
                 <tr className="border-b border-border bg-muted/50">
                   <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Producto</th>
                   <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden md:table-cell">Tamaño</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden md:table-cell">Marca</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden lg:table-cell">Material</th>
                   <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell">Precio/m²</th>
                   <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden lg:table-cell">Stock</th>
                   <th className="text-center px-2 py-3 font-semibold text-muted-foreground" title="Destacado (Más Populares)">⭐</th>
@@ -218,7 +259,7 @@ export default function ProductosAdminPage() {
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-lg overflow-hidden bg-muted shrink-0">
                         {product.images?.[0] ? (
-                          <Image src={product.images[0]} alt="" width={40} height={40} className="object-cover w-full h-full" />
+                          <Image src={product.images[0]} alt="" width={40} height={40} className="object-cover w-full h-full" unoptimized />
                         ) : (
                           <div className="h-full flex items-center justify-center">
                             <Box className="h-4 w-4 text-muted-foreground" />
@@ -232,6 +273,16 @@ export default function ProductosAdminPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{product.size} cm</td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    <span className="inline-flex items-center rounded-md bg-ran-navy/5 px-2 py-1 text-xs font-semibold text-ran-navy ring-1 ring-inset ring-ran-navy/10">
+                      {product.brand || 'N/A'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 hidden lg:table-cell">
+                    <span className="inline-flex items-center rounded-md bg-ran-cerulean/5 px-2 py-1 text-xs font-medium text-ran-cerulean ring-1 ring-inset ring-ran-cerulean/10">
+                      {product.material || 'N/A'}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 font-semibold hidden sm:table-cell">{formatARS(product.pricePerM2)}</td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     <span className={product.stock === 0 ? 'text-red-500' : product.stock < 10 ? 'text-amber-500' : 'text-green-600'}>

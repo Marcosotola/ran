@@ -366,6 +366,8 @@ export async function importCatalog() {
       const newDocRef = doc(productsRef);
       batch.set(newDocRef, {
         ...item,
+        brand: 'Cerámica Lourdes',
+        material: 'Cerámica',
         updatedAt: new Date(),
         createdBy: 'system'
       });

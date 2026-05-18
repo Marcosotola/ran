@@ -49,6 +49,8 @@ export interface Product {
   isActive: boolean;
   createdBy: string; // uid
   updatedAt: Date;
+  brand?: string;
+  material?: string;
   tags?: string[];
   isFeatured?: boolean;
   isOffer?: boolean;

@@ -102,3 +102,34 @@ export async function adjustStock(id: string, amount: number): Promise<void> {
     updatedAt: serverTimestamp(),
   });
 }
+
+/** Update existing products with default Brand and Material if empty */
+export async function fixExistingProducts(): Promise<number> {
+  const q = query(collection(db, PRODUCTS_COL));
+  const snap = await getDocs(q);
+  const products = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Product[];
+  let count = 0;
+  
+  for (const p of products) {
+    let needsUpdate = false;
+    const updateData: any = {};
+    
+    if (!p.brand) {
+      updateData.brand = 'Cerámica Lourdes';
+      needsUpdate = true;
+    }
+    if (!p.material) {
+      updateData.material = 'Cerámica';
+      needsUpdate = true;
+    }
+    
+    if (needsUpdate) {
+      await updateDoc(doc(db, PRODUCTS_COL, p.id), {
+        ...updateData,
+        updatedAt: serverTimestamp(),
+      });
+      count++;
+    }
+  }
+  return count;
+}

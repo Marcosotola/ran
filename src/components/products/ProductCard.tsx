@@ -31,6 +31,7 @@ export function ProductCard({ product }: ProductCardProps) {
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-110"
               sizes="(max-width: 768px) 50vw, 25vw"
+              unoptimized
             />
           ) : (
             <div className="flex h-full items-center justify-center bg-gradient-to-br from-ran-navy/10 to-ran-cerulean/10">
@@ -62,8 +63,22 @@ export function ProductCard({ product }: ProductCardProps) {
               {product.name}
             </h3>
           </Link>
-          <p className="text-xs text-muted-foreground mt-1 font-medium">
-            {product.size} cm • {product.finish}
+          <p className="text-xs text-muted-foreground mt-1 font-medium flex flex-wrap gap-x-1 items-center">
+            <span>{product.size} cm</span>
+            <span>•</span>
+            <span>{product.finish}</span>
+            {product.brand && (
+              <>
+                <span>•</span>
+                <span className="font-semibold text-ran-navy/80">{product.brand}</span>
+              </>
+            )}
+            {product.material && (
+              <>
+                <span>•</span>
+                <span className="text-ran-cerulean font-semibold">{product.material}</span>
+              </>
+            )}
           </p>
         </div>
 

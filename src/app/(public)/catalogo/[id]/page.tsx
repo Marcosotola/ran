@@ -212,7 +212,7 @@ export default function ProductDetailPage() {
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <div>
                   <dt className="text-muted-foreground">Formato</dt>
-                  <dd className="font-semibold">{product.size} cm</dd>
+                  <dd className="font-semibold">{product.sizes && product.sizes.length > 0 ? product.sizes.join(', ') : product.size} cm</dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">Acabado</dt>

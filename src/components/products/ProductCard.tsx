@@ -64,7 +64,7 @@ export function ProductCard({ product }: ProductCardProps) {
             </h3>
           </Link>
           <p className="text-xs text-muted-foreground mt-1 font-medium flex flex-wrap gap-x-1 items-center">
-            <span>{product.size} cm</span>
+            <span>{product.sizes && product.sizes.length > 0 ? product.sizes.join(', ') : product.size} cm</span>
             <span>•</span>
             <span>{product.finish}</span>
             {product.brand && (

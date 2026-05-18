@@ -73,6 +73,7 @@ export default function ProductosAdminPage() {
       result = result.filter((p) => 
         p.name.toLowerCase().includes(s) || 
         p.size.includes(s) || 
+        (p.sizes && p.sizes.some(sz => sz.toLowerCase().includes(s))) ||
         p.category.toLowerCase().includes(s) ||
         (p.brand && p.brand.toLowerCase().includes(s)) ||
         (p.material && p.material.toLowerCase().includes(s))
@@ -272,7 +273,9 @@ export default function ProductosAdminPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{product.size} cm</td>
+                  <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
+                    {product.sizes && product.sizes.length > 0 ? product.sizes.join(', ') : product.size} cm
+                  </td>
                   <td className="px-4 py-3 hidden md:table-cell">
                     <span className="inline-flex items-center rounded-md bg-ran-navy/5 px-2 py-1 text-xs font-semibold text-ran-navy ring-1 ring-inset ring-ran-navy/10">
                       {product.brand || 'N/A'}

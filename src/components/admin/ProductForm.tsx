@@ -134,6 +134,7 @@ export default function ProductForm({ initialData }: ProductFormProps) {
     material: initialData?.material || 'N/A',
   });
 
+  const [selectedSizesList, setSelectedSizesList] = useState<string[]>(initialData?.sizes || (initialData?.size ? [initialData.size] : []));
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>(initialData?.images || []);
   const [uploading, setUploading] = useState(false);
@@ -210,8 +211,8 @@ export default function ProductForm({ initialData }: ProductFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.pricePerM2 || !form.size) {
-      toast.error('Completá los campos obligatorios: nombre, tamaño y precio/m²');
+    if (!form.name || !form.pricePerM2 || selectedSizesList.length === 0) {
+      toast.error('Completá los campos obligatorios: nombre, al menos un tamaño y precio/m²');
       return;
     }
     if (!user) {
@@ -227,7 +228,8 @@ export default function ProductForm({ initialData }: ProductFormProps) {
         name: form.name,
         description: form.description,
         category: form.category,
-        size: form.size,
+        size: selectedSizesList[0] || '',
+        sizes: selectedSizesList,
         finish: form.finish,
         pricePerM2: parseFloat(form.pricePerM2),
         pricePerBox: parseFloat(form.pricePerBox || '0'),
@@ -356,7 +358,7 @@ export default function ProductForm({ initialData }: ProductFormProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>Categoría *</Label>
               <Select value={form.category} onValueChange={(v) => update('category', v as ProductCategory)}>
@@ -369,15 +371,6 @@ export default function ProductForm({ initialData }: ProductFormProps) {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Tamaño *</Label>
-              <Select value={form.size} onValueChange={(v) => update('size', v)}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                <SelectContent>
-                  {SIZES.map((s) => <SelectItem key={s} value={s}>{s} cm</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
               <Label>Acabado *</Label>
               <Select value={form.finish} onValueChange={(v) => update('finish', v as ProductFinish)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -385,6 +378,40 @@ export default function ProductForm({ initialData }: ProductFormProps) {
                   {FINISHES.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-1">
+            <Label className="text-sm font-bold flex justify-between">
+              <span>Tamaños / Medidas * (Selecciona una o varias)</span>
+              {selectedSizesList.length > 0 && (
+                <span className="text-xs text-blue-600 font-semibold">{selectedSizesList.length} seleccionada(s)</span>
+              )}
+            </Label>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {SIZES.map((s) => {
+                const isSelected = selectedSizesList.includes(s);
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedSizesList(selectedSizesList.filter((sz) => sz !== s));
+                      } else {
+                        setSelectedSizesList([...selectedSizesList, s]);
+                      }
+                    }}
+                    className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                      isSelected
+                        ? 'bg-[#3B82C4] text-white border-transparent shadow-md scale-105'
+                        : 'border-border bg-white text-muted-foreground hover:border-[#3B82C4] hover:text-[#3B82C4]'
+                    }`}
+                  >
+                    {s} cm
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

@@ -91,7 +91,14 @@ import { increment } from 'firebase/firestore';
 export async function getProductSizes(): Promise<string[]> {
   const snap = await getDocs(collection(db, PRODUCTS_COL));
   const sizes = new Set<string>();
-  snap.docs.forEach((d) => sizes.add(d.data().size));
+  snap.docs.forEach((d) => {
+    const data = d.data();
+    if (data.sizes && Array.isArray(data.sizes)) {
+      data.sizes.forEach((s: string) => sizes.add(s));
+    } else if (data.size) {
+      sizes.add(data.size);
+    }
+  });
   return Array.from(sizes).sort();
 }
 
@@ -120,6 +127,10 @@ export async function fixExistingProducts(): Promise<number> {
     }
     if (!p.material) {
       updateData.material = 'Cerámica';
+      needsUpdate = true;
+    }
+    if (!p.sizes && p.size) {
+      updateData.sizes = [p.size];
       needsUpdate = true;
     }
     

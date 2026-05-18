@@ -34,6 +34,7 @@ export interface Product {
   name: string;
   category: ProductCategory;
   size: string; // e.g. "56x56", "31x53"
+  sizes?: string[]; // Support multiple sizes/measurements per product
   finish: ProductFinish;
   description: string;
   images: string[]; // Firebase Storage URLs

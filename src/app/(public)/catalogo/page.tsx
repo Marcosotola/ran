@@ -148,7 +148,12 @@ export default function CatalogoPage() {
       result = result.filter((p) => selectedCats.includes(p.category));
     }
     if (selectedSizes.length > 0) {
-      result = result.filter((p) => selectedSizes.includes(p.size));
+      result = result.filter((p) => {
+        if (p.sizes && p.sizes.length > 0) {
+          return p.sizes.some(s => selectedSizes.includes(s));
+        }
+        return selectedSizes.includes(p.size);
+      });
     }
     if (selectedFinishes.length > 0) {
       result = result.filter((p) => selectedFinishes.includes(p.finish));
@@ -166,6 +171,7 @@ export default function CatalogoPage() {
           p.name.toLowerCase().includes(q) ||
           p.description.toLowerCase().includes(q) ||
           p.size.includes(q) ||
+          (p.sizes && p.sizes.some(s => s.toLowerCase().includes(q))) ||
           (p.brand && p.brand.toLowerCase().includes(q)) ||
           (p.material && p.material.toLowerCase().includes(q)),
       );

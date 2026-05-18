@@ -556,7 +556,7 @@ function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings, catalog }
                                           handleUpdateItem(idx, { 
                                             name: p.name, 
                                             pricePerM2: p.pricePerM2,
-                                            size: p.size 
+                                            size: p.sizes && p.sizes.length > 0 ? p.sizes[0] : p.size 
                                           });
                                           setSearchQuery(prev => {
                                             const next = { ...prev };
@@ -566,11 +566,36 @@ function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings, catalog }
                                         }}
                                       >
                                         <p className="font-black text-sm text-slate-900 leading-none">{p.name}</p>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">{p.size} • {formatARS(p.pricePerM2)}/m²</p>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
+                                          {p.sizes && p.sizes.length > 0 ? p.sizes.join(', ') : p.size} • {formatARS(p.pricePerM2)}/m²
+                                        </p>
                                       </div>
                                     ))}
                                 </div>
                               )}
+
+                              {/* Medida Selector for Edit Mode */}
+                              {(() => {
+                                const selectedProd = catalog.find(cp => cp.name === item.name);
+                                return (
+                                  <div className="mt-1.5 flex items-center gap-2">
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase">Medida:</span>
+                                    {selectedProd && selectedProd.sizes && selectedProd.sizes.length > 1 ? (
+                                      <select
+                                        className="text-[11px] font-bold uppercase text-[#3B82C4] bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-[#3B82C4] outline-none cursor-pointer"
+                                        value={item.size}
+                                        onChange={(e) => handleUpdateItem(idx, { size: e.target.value })}
+                                      >
+                                        {selectedProd.sizes.map((sz) => (
+                                          <option key={sz} value={sz}>{sz} cm</option>
+                                        ))}
+                                      </select>
+                                    ) : (
+                                      <span className="text-[11px] text-slate-600 font-bold uppercase">{item.size || 'Medida estándar'}</span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           ) : (
                             <div className="flex flex-col">
@@ -974,7 +999,7 @@ function CreateQuoteModal({ onRefresh, catalog }: { onRefresh: () => void, catal
                                         handleUpdateItem(idx, { 
                                           name: p.name, 
                                           pricePerM2: p.pricePerM2,
-                                          size: p.size 
+                                          size: p.sizes && p.sizes.length > 0 ? p.sizes[0] : p.size 
                                         });
                                         setSearchQuery(prev => {
                                           const next = { ...prev };
@@ -984,11 +1009,36 @@ function CreateQuoteModal({ onRefresh, catalog }: { onRefresh: () => void, catal
                                       }}
                                     >
                                       <p className="font-black text-sm text-slate-900 leading-none">{p.name}</p>
-                                      <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">{p.size} • {formatARS(p.pricePerM2)}/m²</p>
+                                      <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
+                                        {p.sizes && p.sizes.length > 0 ? p.sizes.join(', ') : p.size} • {formatARS(p.pricePerM2)}/m²
+                                      </p>
                                     </div>
                                   ))}
                               </div>
                             )}
+
+                            {/* Medida Selector for Create Quote */}
+                            {(() => {
+                              const selectedProd = catalog.find(cp => cp.name === it.name);
+                              return (
+                                <div className="mt-1.5 flex items-center gap-2">
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase">Medida:</span>
+                                  {selectedProd && selectedProd.sizes && selectedProd.sizes.length > 1 ? (
+                                    <select
+                                      className="text-[11px] font-bold uppercase text-[#3B82C4] bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-[#3B82C4] outline-none cursor-pointer"
+                                      value={it.size}
+                                      onChange={(e) => handleUpdateItem(idx, { size: e.target.value })}
+                                    >
+                                      {selectedProd.sizes.map((sz) => (
+                                        <option key={sz} value={sz}>{sz} cm</option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <span className="text-[11px] text-slate-600 font-bold uppercase">{it.size || 'Medida estándar'}</span>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </td>
                         <td className="px-5 py-5 text-center border-r border-slate-100">

@@ -43,7 +43,7 @@ const CATEGORIES = [
   { value: 'ambos', label: 'Piso & Pared' },
 ];
 
-const SIZES = ['35x35', '56x56', '18x56', '31x53', '20x50', '45x45', '60x60', '30x60', '60x120', '80x160', '22x160', '120x120'];
+const SIZES = ['35x35', '53x53', '56x56', '80x80', '18x56', '31x53', '20x50', '45x45', '60x60', '30x60', '60x120', '80x160', '22x160', '120x120'];
 
 const FINISHES: ProductFinish[] = ['Brillante', 'Mate', 'Pulido', 'Rectificado', 'Natural', 'Satinado', 'Otro'];
 

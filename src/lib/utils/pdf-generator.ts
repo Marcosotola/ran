@@ -143,21 +143,87 @@ export const generateQuotePDF = async (quote: Quote, settings: AppSettings) => {
     }
   });
 
-  // 4. Totals
-  const finalY = (doc as any).lastAutoTable.finalY + 10;
-  
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(27, 42, 74);
-  const totalText = `TOTAL PRESUPUESTO: ${formatARS(quote.grandTotal)}`;
-  doc.text(totalText, PAGE_WIDTH - MARGIN, finalY + 10, { align: 'right' });
+  // 4. Totals breakdown
+  let currentY = (doc as any).lastAutoTable.finalY + 15;
 
-  // 5. Terms (Optional)
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(150, 150, 150);
-  doc.text('Presupuesto sujeto a disponibilidad de stock y cambios de precio sin previo aviso.', MARGIN, finalY + 30);
-  doc.text('El material se retira de nuestro showroom previa coordinación.', MARGIN, finalY + 35);
+  const materials = quote.totalMaterials || 0;
+  const shipping = quote.shipping || 0;
+  const discount = quote.discount || 0;
+  const discountType = quote.discountType || 'amount';
+  const vatRate = quote.vatRate || 0;
+
+  const discountAmount = discount > 0
+    ? (discountType === 'percentage' ? materials * discount / 100 : discount)
+    : 0;
+  const afterDiscount = materials - discountAmount;
+  const vatAmount = vatRate > 0 ? (afterDiscount + shipping) * vatRate / 100 : 0;
+
+  const hasBreakdown = discountAmount > 0 || shipping > 0 || vatAmount > 0;
+
+  if (hasBreakdown) {
+    const colLabel = MARGIN;
+    const colValue = PAGE_WIDTH - MARGIN;
+    const lineH = 8;
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+
+    doc.setTextColor(100, 100, 100);
+    doc.text('Subtotal Materiales', colLabel, currentY);
+    doc.text(formatARS(materials), colValue, currentY, { align: 'right' });
+    currentY += lineH;
+
+    if (discountAmount > 0) {
+      const label = discountType === 'percentage'
+        ? `Descuento (${discount}%)`
+        : 'Descuento';
+      doc.setTextColor(180, 50, 50);
+      doc.text(label, colLabel, currentY);
+      doc.text(`-${formatARS(discountAmount)}`, colValue, currentY, { align: 'right' });
+      doc.setTextColor(100, 100, 100);
+      currentY += lineH;
+    }
+
+    if (shipping > 0) {
+      doc.text('Flete', colLabel, currentY);
+      doc.text(formatARS(shipping), colValue, currentY, { align: 'right' });
+      currentY += lineH;
+    }
+
+    if (vatAmount > 0) {
+      doc.setTextColor(30, 100, 50);
+      doc.text(`IVA (${vatRate}%)`, colLabel, currentY);
+      doc.text(formatARS(vatAmount), colValue, currentY, { align: 'right' });
+      doc.setTextColor(100, 100, 100);
+      currentY += lineH;
+    }
+
+    doc.setDrawColor(200, 200, 200);
+    doc.line(colLabel, currentY + 2, colValue, currentY + 2);
+    currentY += 10;
+
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(27, 42, 74);
+    doc.text('TOTAL FINAL', colLabel, currentY);
+    doc.text(formatARS(quote.grandTotal), colValue, currentY, { align: 'right' });
+    currentY += 15;
+  } else {
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(27, 42, 74);
+    doc.text(`TOTAL PRESUPUESTO: ${formatARS(quote.grandTotal)}`, PAGE_WIDTH - MARGIN, currentY, { align: 'right' });
+    currentY += 20;
+  }
+
+  // 5. PDF Notes (solo si están cargadas)
+  if (quote.pdfNotes && quote.pdfNotes.trim()) {
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(150, 150, 150);
+    const splitNotes = doc.splitTextToSize(quote.pdfNotes.trim(), PAGE_WIDTH - (MARGIN * 2));
+    doc.text(splitNotes, MARGIN, currentY + 5);
+  }
 
   // Download
   doc.save(`Presupuesto_RAN_${(quote.clientName || 'Cliente').replace(/\s/g, '_')}.pdf`);

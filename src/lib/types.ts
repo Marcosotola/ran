@@ -87,6 +87,10 @@ export interface Quote {
   aiConversationLog: ChatMessage[];
   shipping?: number;
   notes?: string;
+  discount?: number;
+  discountType?: 'amount' | 'percentage';
+  vatRate?: number;
+  pdfNotes?: string;
   createdAt: Date;
   acceptedAt?: Date;
 }

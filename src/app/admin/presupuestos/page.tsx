@@ -274,6 +274,12 @@ function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings, catalog }
   const [items, setItems] = useState<QuoteItem[]>(quote.items || []);
   const [shipping, setShipping] = useState<number>(quote.shipping || 0);
   const [notes, setNotes] = useState<string>(quote.notes || '');
+  const [showDiscount, setShowDiscount] = useState(false);
+  const [discount, setDiscount] = useState<number>(0);
+  const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('percentage');
+  const [showVat, setShowVat] = useState(false);
+  const [vatRate, setVatRate] = useState<number>(0);
+  const [pdfNotes, setPdfNotes] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
   const [assignedVendorId, setAssignedVendorId] = useState<string>(quote.assignedVendorId || '');
   const [allVendors, setAllVendors] = useState<RANUser[]>([]);
@@ -285,9 +291,17 @@ function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings, catalog }
       setItems(quote.items || []);
       setShipping(quote.shipping || 0);
       setNotes(quote.notes || '');
+      const qDiscount = quote.discount || 0;
+      const qVatRate = quote.vatRate || 0;
+      setDiscount(qDiscount);
+      setShowDiscount(qDiscount > 0);
+      setDiscountType(quote.discountType || 'percentage');
+      setVatRate(qVatRate);
+      setShowVat(qVatRate > 0);
+      setPdfNotes(quote.pdfNotes || '');
       setAssignedVendorId(quote.assignedVendorId || '');
       setEditMode(false);
-      
+
       // Fetch vendors
       getAllUsers().then(users => {
         setAllVendors(users.filter(u => u.role === 'vendedor' || u.role === 'admin' || u.role === 'superadmin'));
@@ -297,8 +311,14 @@ function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings, catalog }
 
   const totals = useMemo(() => {
     const materials = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
-    return { materials, grand: materials + shipping };
-  }, [items, shipping]);
+    const discountAmount = discount > 0
+      ? (discountType === 'percentage' ? materials * discount / 100 : discount)
+      : 0;
+    const afterDiscount = materials - discountAmount;
+    const vatAmount = vatRate > 0 ? (afterDiscount + shipping) * vatRate / 100 : 0;
+    const grand = afterDiscount + shipping + vatAmount;
+    return { materials, discountAmount, afterDiscount, vatAmount, grand };
+  }, [items, shipping, discount, discountType, vatRate]);
 
   const handleUpdateItem = (index: number, updates: Partial<QuoteItem>) => {
     const newItems = [...items];
@@ -340,6 +360,7 @@ function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings, catalog }
     try {
       await updateQuote(quote.id!, {
         items, shipping, notes,
+        discount, discountType, vatRate, pdfNotes,
         totalMaterials: totals.materials,
         grandTotal: totals.grand,
         assignedVendorId: assignedVendorId || undefined
@@ -371,10 +392,11 @@ function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings, catalog }
     try {
       await updateQuote(quote.id!, {
         items, shipping, notes,
+        discount, discountType, vatRate, pdfNotes,
         totalMaterials: totals.materials,
         grandTotal: totals.grand
       });
-      await convertQuoteToSale({ ...quote, items, shipping, notes, grandTotal: totals.grand }, paymentMethod);
+      await convertQuoteToSale({ ...quote, items, shipping, notes, discount, discountType, vatRate, pdfNotes, grandTotal: totals.grand }, paymentMethod);
       toast.success('¡Venta realizada con éxito!');
       onRefresh();
       setOpen(false);
@@ -496,7 +518,7 @@ function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings, catalog }
                     <Button 
                       variant="outline" 
                       className="rounded-xl border-2 font-black text-slate-600 border-slate-200 hover:bg-slate-50 gap-2"
-                      onClick={() => generateQuotePDF(quote, appSettings)}
+                      onClick={() => generateQuotePDF({ ...quote, items, shipping, notes, discount, discountType, vatRate, pdfNotes, totalMaterials: totals.materials, grandTotal: totals.grand }, appSettings)}
                     >
                       <Download className="h-4 w-4" /> DESCARGAR PDF
                     </Button>
@@ -737,20 +759,148 @@ function QuoteDetailModal({ quote, onRefresh, vendorName, appSettings, catalog }
               )}
             </div>
 
+            {/* Líneas Adicionales del PDF */}
+            <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-lg space-y-6">
+              <h5 className="font-black text-base text-slate-700 uppercase tracking-widest flex items-center gap-2">
+                <FileText className="h-4 w-4 text-slate-400" /> Líneas Adicionales del Presupuesto
+              </h5>
+
+              {/* Descuento */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-black text-slate-800">Descuento</p>
+                    <p className="text-[11px] text-slate-400">Aparece en el PDF solo si está activo</p>
+                  </div>
+                  <button
+                    className={`px-4 py-1.5 rounded-xl text-xs font-black border transition-all ${showDiscount ? 'bg-red-50 text-red-600 border-red-200' : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-slate-300'}`}
+                    onClick={() => { setShowDiscount(!showDiscount); if (showDiscount) setDiscount(0); }}
+                  >
+                    {showDiscount ? '✓ Activo' : '+ Agregar'}
+                  </button>
+                </div>
+                {showDiscount && (
+                  <div className="flex flex-wrap gap-3 items-center bg-slate-50 p-3 rounded-2xl">
+                    <Select value={discountType} onValueChange={(v: any) => setDiscountType(v)}>
+                      <SelectTrigger className="w-44 h-10 rounded-xl bg-white text-sm font-bold">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">Porcentaje %</SelectItem>
+                        <SelectItem value="amount">Monto fijo $</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="relative flex-1 min-w-[120px]">
+                      <Input
+                        type="number"
+                        value={discount || ''}
+                        onFocus={e => e.target.select()}
+                        onChange={e => setDiscount(parseFloat(e.target.value) || 0)}
+                        className="h-10 rounded-xl font-bold text-right pr-8"
+                        placeholder={discountType === 'percentage' ? '10' : '50000'}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">
+                        {discountType === 'percentage' ? '%' : '$'}
+                      </span>
+                    </div>
+                    {totals.discountAmount > 0 && (
+                      <span className="text-sm font-black text-red-500 whitespace-nowrap">
+                        -{formatARS(totals.discountAmount)}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* IVA */}
+              <div className="space-y-3 border-t border-slate-100 pt-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-black text-slate-800">IVA</p>
+                    <p className="text-[11px] text-slate-400">Aparece en el PDF solo si está activo</p>
+                  </div>
+                  <button
+                    className={`px-4 py-1.5 rounded-xl text-xs font-black border transition-all ${showVat ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-slate-300'}`}
+                    onClick={() => { setShowVat(!showVat); if (showVat) setVatRate(0); }}
+                  >
+                    {showVat ? '✓ Activo' : '+ Agregar'}
+                  </button>
+                </div>
+                {showVat && (
+                  <div className="flex flex-wrap gap-3 items-center bg-slate-50 p-3 rounded-2xl">
+                    <Select value={vatRate.toString()} onValueChange={v => setVatRate(parseFloat(v))}>
+                      <SelectTrigger className="w-52 h-10 rounded-xl bg-white text-sm font-bold">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10.5">10.5% — IVA reducido</SelectItem>
+                        <SelectItem value="21">21% — IVA general</SelectItem>
+                        <SelectItem value="27">27% — IVA diferencial</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="relative flex-1 min-w-[120px]">
+                      <Input
+                        type="number"
+                        value={vatRate || ''}
+                        onFocus={e => e.target.select()}
+                        onChange={e => setVatRate(parseFloat(e.target.value) || 0)}
+                        className="h-10 rounded-xl font-bold text-right pr-7"
+                        placeholder="21"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">%</span>
+                    </div>
+                    {totals.vatAmount > 0 && (
+                      <span className="text-sm font-black text-blue-500 whitespace-nowrap">
+                        +{formatARS(totals.vatAmount)}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Notas para el PDF */}
+              <div className="space-y-2 border-t border-slate-100 pt-5">
+                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
+                  Notas para el PDF
+                </Label>
+                <Textarea
+                  className="min-h-[90px] rounded-2xl bg-slate-50 border-transparent focus:bg-white focus:ring-[#3B82C4] p-4 text-sm font-medium resize-none"
+                  placeholder="Estas notas aparecerán al pie del presupuesto en el PDF. Ej: Precio sujeto a disponibilidad de stock..."
+                  value={pdfNotes}
+                  onChange={e => setPdfNotes(e.target.value)}
+                />
+              </div>
+            </div>
+
             {/* Total Block */}
             <div className="bg-[#1B2A4A] text-white rounded-[40px] p-12 flex flex-col lg:flex-row justify-between items-center shadow-3xl border-4 border-white/5">
               <div className="mb-10 lg:mb-0 space-y-4 text-center lg:text-left">
                 <p className="text-white/40 uppercase font-black tracking-[0.3em] text-xs">Resumen Final del Presupuesto</p>
-                <div className="flex flex-wrap gap-10 justify-center lg:justify-start">
-                  <div>
-                    <p className="text-[10px] text-white/30 uppercase font-black tracking-widest leading-none mb-2 text-white">Subtotal Materiales</p>
-                    <p className="font-black text-3xl">{formatARS(totals.materials)}</p>
+                <div className="flex flex-col gap-3 min-w-[260px]">
+                  <div className="flex justify-between items-baseline gap-8">
+                    <p className="text-[10px] text-white/50 uppercase font-black tracking-widest leading-none">Subtotal Materiales</p>
+                    <p className="font-black text-xl text-white/80">{formatARS(totals.materials)}</p>
                   </div>
-                  <div className="w-px h-12 bg-white/10 self-center hidden md:block" />
-                  <div>
-                    <p className="text-[10px] text-white/30 uppercase font-black tracking-widest leading-none mb-2 text-white">Costo Logística</p>
-                    <p className="font-black text-3xl text-blue-400">+{formatARS(shipping)}</p>
-                  </div>
+                  {totals.discountAmount > 0 && (
+                    <div className="flex justify-between items-baseline gap-8">
+                      <p className="text-[10px] text-red-300/80 uppercase font-black tracking-widest leading-none">
+                        Descuento {discountType === 'percentage' ? `(${discount}%)` : ''}
+                      </p>
+                      <p className="font-black text-lg text-red-400">-{formatARS(totals.discountAmount)}</p>
+                    </div>
+                  )}
+                  {shipping > 0 && (
+                    <div className="flex justify-between items-baseline gap-8">
+                      <p className="text-[10px] text-blue-300/80 uppercase font-black tracking-widest leading-none">Flete</p>
+                      <p className="font-black text-lg text-blue-400">+{formatARS(shipping)}</p>
+                    </div>
+                  )}
+                  {totals.vatAmount > 0 && (
+                    <div className="flex justify-between items-baseline gap-8">
+                      <p className="text-[10px] text-yellow-300/80 uppercase font-black tracking-widest leading-none">IVA ({vatRate}%)</p>
+                      <p className="font-black text-lg text-yellow-400">+{formatARS(totals.vatAmount)}</p>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="text-center lg:text-right">
@@ -830,12 +980,24 @@ function CreateQuoteModal({ onRefresh, catalog }: { onRefresh: () => void, catal
   const [clientEmail, setClientEmail] = useState('');
   const [items, setItems] = useState<QuoteItem[]>([]);
   const [shipping, setShipping] = useState(0);
+  const [showDiscount, setShowDiscount] = useState(false);
+  const [discount, setDiscount] = useState(0);
+  const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('percentage');
+  const [showVat, setShowVat] = useState(false);
+  const [vatRate, setVatRate] = useState(0);
+  const [pdfNotes, setPdfNotes] = useState('');
   const [searchQuery, setSearchQuery] = useState<{ [key: number]: string }>({});
 
   const totals = useMemo(() => {
     const materials = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
-    return { materials, grand: materials + shipping };
-  }, [items, shipping]);
+    const discountAmount = discount > 0
+      ? (discountType === 'percentage' ? materials * discount / 100 : discount)
+      : 0;
+    const afterDiscount = materials - discountAmount;
+    const vatAmount = vatRate > 0 ? (afterDiscount + shipping) * vatRate / 100 : 0;
+    const grand = afterDiscount + shipping + vatAmount;
+    return { materials, discountAmount, afterDiscount, vatAmount, grand };
+  }, [items, shipping, discount, discountType, vatRate]);
 
   const handleAddItem = () => {
     setItems([...items, {
@@ -881,6 +1043,10 @@ function CreateQuoteModal({ onRefresh, catalog }: { onRefresh: () => void, catal
           clientEmail,
           items,
           shipping,
+          discount,
+          discountType,
+          vatRate,
+          pdfNotes,
           totalMaterials: totals.materials,
           grandTotal: totals.grand,
           assignedVendorId: ranUser?.uid || null,
@@ -900,6 +1066,12 @@ function CreateQuoteModal({ onRefresh, catalog }: { onRefresh: () => void, catal
       setClientEmail('');
       setItems([]);
       setShipping(0);
+      setDiscount(0);
+      setShowDiscount(false);
+      setDiscountType('percentage');
+      setVatRate(0);
+      setShowVat(false);
+      setPdfNotes('');
     } catch (e: any) {
       toast.error('Error al crear: ' + e.message);
     } finally {
@@ -1099,31 +1271,164 @@ function CreateQuoteModal({ onRefresh, catalog }: { onRefresh: () => void, catal
               </div>
             </div>
 
+            {/* Líneas Adicionales */}
+            <div className="bg-white p-8 rounded-3xl border shadow-lg space-y-6">
+              <h5 className="font-black text-base text-slate-700 uppercase tracking-widest flex items-center gap-2">
+                <FileText className="h-4 w-4 text-slate-400" /> Líneas Adicionales del PDF
+              </h5>
+
+              {/* Flete */}
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Flete estimado</Label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-400">$</span>
+                  <Input
+                    type="number"
+                    value={shipping || ''}
+                    onFocus={e => e.target.select()}
+                    onChange={e => setShipping(parseFloat(e.target.value) || 0)}
+                    className="pl-8 h-11 rounded-xl bg-slate-50 border-transparent font-bold"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              {/* Descuento */}
+              <div className="space-y-3 border-t border-slate-100 pt-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-black text-slate-800">Descuento</p>
+                    <p className="text-[11px] text-slate-400">Aparece en el PDF solo si está activo</p>
+                  </div>
+                  <button
+                    className={`px-4 py-1.5 rounded-xl text-xs font-black border transition-all ${showDiscount ? 'bg-red-50 text-red-600 border-red-200' : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-slate-300'}`}
+                    onClick={() => { setShowDiscount(!showDiscount); if (showDiscount) setDiscount(0); }}
+                  >
+                    {showDiscount ? '✓ Activo' : '+ Agregar'}
+                  </button>
+                </div>
+                {showDiscount && (
+                  <div className="flex flex-wrap gap-3 items-center bg-slate-50 p-3 rounded-2xl">
+                    <Select value={discountType} onValueChange={(v: any) => setDiscountType(v)}>
+                      <SelectTrigger className="w-44 h-10 rounded-xl bg-white text-sm font-bold">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">Porcentaje %</SelectItem>
+                        <SelectItem value="amount">Monto fijo $</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="relative flex-1 min-w-[120px]">
+                      <Input
+                        type="number"
+                        value={discount || ''}
+                        onFocus={e => e.target.select()}
+                        onChange={e => setDiscount(parseFloat(e.target.value) || 0)}
+                        className="h-10 rounded-xl font-bold text-right pr-8"
+                        placeholder={discountType === 'percentage' ? '10' : '50000'}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">
+                        {discountType === 'percentage' ? '%' : '$'}
+                      </span>
+                    </div>
+                    {totals.discountAmount > 0 && (
+                      <span className="text-sm font-black text-red-500 whitespace-nowrap">
+                        -{formatARS(totals.discountAmount)}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* IVA */}
+              <div className="space-y-3 border-t border-slate-100 pt-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-black text-slate-800">IVA</p>
+                    <p className="text-[11px] text-slate-400">Aparece en el PDF solo si está activo</p>
+                  </div>
+                  <button
+                    className={`px-4 py-1.5 rounded-xl text-xs font-black border transition-all ${showVat ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-slate-300'}`}
+                    onClick={() => { setShowVat(!showVat); if (showVat) setVatRate(0); }}
+                  >
+                    {showVat ? '✓ Activo' : '+ Agregar'}
+                  </button>
+                </div>
+                {showVat && (
+                  <div className="flex flex-wrap gap-3 items-center bg-slate-50 p-3 rounded-2xl">
+                    <Select value={vatRate.toString()} onValueChange={v => setVatRate(parseFloat(v))}>
+                      <SelectTrigger className="w-52 h-10 rounded-xl bg-white text-sm font-bold">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10.5">10.5% — IVA reducido</SelectItem>
+                        <SelectItem value="21">21% — IVA general</SelectItem>
+                        <SelectItem value="27">27% — IVA diferencial</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="relative flex-1 min-w-[120px]">
+                      <Input
+                        type="number"
+                        value={vatRate || ''}
+                        onFocus={e => e.target.select()}
+                        onChange={e => setVatRate(parseFloat(e.target.value) || 0)}
+                        className="h-10 rounded-xl font-bold text-right pr-7"
+                        placeholder="21"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">%</span>
+                    </div>
+                    {totals.vatAmount > 0 && (
+                      <span className="text-sm font-black text-blue-500 whitespace-nowrap">
+                        +{formatARS(totals.vatAmount)}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Notas para el PDF */}
+              <div className="space-y-2 border-t border-slate-100 pt-5">
+                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                  Notas para el PDF
+                </Label>
+                <Textarea
+                  className="min-h-[80px] rounded-2xl bg-slate-50 border-transparent focus:bg-white focus:ring-[#3B82C4] p-4 text-sm font-medium resize-none"
+                  placeholder="Estas notas aparecerán al pie del presupuesto en el PDF..."
+                  value={pdfNotes}
+                  onChange={e => setPdfNotes(e.target.value)}
+                />
+              </div>
+            </div>
+
             {/* Totals Section */}
             <div className="bg-[#1B2A4A] p-6 sm:p-8 rounded-[32px] text-white flex flex-col sm:flex-row justify-between items-center gap-8 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-ran-gradient opacity-50" />
-              
-              <div className="flex flex-col sm:flex-row gap-6 sm:gap-10 w-full sm:w-auto items-center sm:items-start text-center sm:text-left">
-                <div className="space-y-1">
-                  <p className="text-[10px] text-white/30 font-black uppercase tracking-widest">Flete Estimado</p>
-                  <div className="relative flex items-center justify-center sm:justify-start">
-                    <span className="text-white/20 font-black mr-1">$</span>
-                    <Input 
-                      type="number" 
-                      value={shipping || ''} 
-                      onFocus={(e) => e.target.select()}
-                      onChange={e => setShipping(parseFloat(e.target.value) || 0)} 
-                      className="bg-transparent border-0 text-xl sm:text-2xl font-black p-0 focus:ring-0 w-32 h-8 text-center sm:text-left selection:bg-blue-500/30" 
-                    />
+
+              <div className="flex flex-col gap-2 w-full sm:w-auto min-w-[220px]">
+                <div className="flex justify-between items-baseline gap-6">
+                  <p className="text-[10px] text-white/50 font-black uppercase tracking-widest">Materiales</p>
+                  <p className="text-lg font-black text-white/80">{formatARS(totals.materials)}</p>
+                </div>
+                {totals.discountAmount > 0 && (
+                  <div className="flex justify-between items-baseline gap-6">
+                    <p className="text-[10px] text-red-300/80 font-black uppercase tracking-widest">
+                      Descuento {discountType === 'percentage' ? `(${discount}%)` : ''}
+                    </p>
+                    <p className="text-lg font-black text-red-400">-{formatARS(totals.discountAmount)}</p>
                   </div>
-                </div>
-                
-                <div className="hidden sm:block w-px h-12 bg-white/10 self-center" />
-                
-                <div className="space-y-1">
-                  <p className="text-[10px] text-white/30 font-black uppercase tracking-widest">Materiales (Subtotal)</p>
-                  <p className="text-xl sm:text-2xl font-black text-white/90">{formatARS(totals.materials)}</p>
-                </div>
+                )}
+                {shipping > 0 && (
+                  <div className="flex justify-between items-baseline gap-6">
+                    <p className="text-[10px] text-blue-300/80 font-black uppercase tracking-widest">Flete</p>
+                    <p className="text-lg font-black text-blue-400">+{formatARS(shipping)}</p>
+                  </div>
+                )}
+                {totals.vatAmount > 0 && (
+                  <div className="flex justify-between items-baseline gap-6">
+                    <p className="text-[10px] text-yellow-300/80 font-black uppercase tracking-widest">IVA ({vatRate}%)</p>
+                    <p className="text-lg font-black text-yellow-400">+{formatARS(totals.vatAmount)}</p>
+                  </div>
+                )}
               </div>
 
               <div className="text-center sm:text-right w-full sm:w-auto pt-6 sm:pt-0 border-t sm:border-0 border-white/10">

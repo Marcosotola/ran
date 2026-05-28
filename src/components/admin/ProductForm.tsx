@@ -106,7 +106,7 @@ interface FormData {
 }
 
 const SIZES = ['35x35', '56x56', '18x56', '31x53', '20x50', '45x45', '60x60', '30x60', '60x120', '80x160', '22x160', '120x120'];
-const FINISHES: ProductFinish[] = ['Brillante', 'Mate', 'Pulido', 'Rectificado', 'Natural', 'Otro'];
+const FINISHES: ProductFinish[] = ['Brillante', 'Mate', 'Pulido', 'Rectificado', 'Natural', 'Satinado', 'Otro'];
 const BRANDS = ['Cerámica Lourdes', 'SPL', 'San Pietro', 'Otra', 'N/A'];
 const MATERIALS = ['Cerámica', 'Porcelanato', 'Otro', 'N/A'];
 

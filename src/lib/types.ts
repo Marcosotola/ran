@@ -27,7 +27,7 @@ export interface RANUser {
 
 // ----- Products -----
 export type ProductCategory = 'pisos' | 'paredes' | 'ambos';
-export type ProductFinish = 'Brillante' | 'Mate' | 'Pulido' | 'Rectificado' | 'Natural' | 'Otro';
+export type ProductFinish = 'Brillante' | 'Mate' | 'Pulido' | 'Rectificado' | 'Natural' | 'Satinado' | 'Otro';
 
 export interface Product {
   id: string;

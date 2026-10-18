@@ -155,13 +155,25 @@ TOTAL_MATERIALES: $[total]`;
     }
 
     // 2. Model Rotation - Handling Rate Limits (Free Tier quota)
-    // Adding more variants to bypass potential specific model quotas
+    // Los alias "-latest" los mantiene Google apuntando al modelo vigente, así no
+    // se rompe cuando dan de baja una versión. GEMINI_MODEL permite forzar uno.
     const models = [
-      'gemini-2.0-flash', 
-      'gemini-2.5-flash', 
-      'gemini-2.0-flash-lite', 
-      'gemini-1.5-pro'
+      ...(process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL.trim()] : []),
+      'gemini-flash-latest',
+      'gemini-flash-lite-latest',
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite'
     ];
+
+    // Gemini espera que la conversación empiece con un mensaje del usuario:
+    // se descarta el saludo inicial del asistente.
+    const history = (messages || []).filter((m: any) => m?.content);
+    while (history.length && history[0].role === 'assistant') history.shift();
+    const contents = history.map((m: any) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }));
+
     let text = '';
     let success = false;
     let quotaError = false;
@@ -172,10 +184,7 @@ TOTAL_MATERIALES: $[total]`;
         console.log(`[Chat API] Executing via ${modelId}...`);
         const response = await genAI.models.generateContent({
           model: modelId,
-          contents: (messages || []).map((m: any) => ({
-            role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: m.content }]
-          })),
+          contents,
           config: { systemInstruction: SYSTEM_PROMPT }
         });
 
@@ -184,8 +193,8 @@ TOTAL_MATERIALES: $[total]`;
           success = true;
         }
       } catch (err: any) {
-        console.warn(`[Chat API] ${modelId} failed:`, err.message);
-        if (err.message?.includes('RESOURCE_EXHAUSTED')) quotaError = true;
+        console.warn(`[Chat API] ${modelId} failed (status ${err.status ?? '?'}):`, err.message);
+        if (err.status === 429 || err.message?.includes('RESOURCE_EXHAUSTED')) quotaError = true;
       }
     }
 
